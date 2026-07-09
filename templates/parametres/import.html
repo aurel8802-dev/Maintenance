@@ -1,0 +1,125 @@
+{% extends "base.html" %}
+
+{% block content %}
+
+<section class="card">
+
+    <div class="section-header">
+        <div>
+            <h2>📥 Importer les anciennes données</h2>
+            <p>Import des demandes et rapports depuis un fichier Excel.</p>
+        </div>
+
+        <a href="/parametres" class="btn-secondary">← Retour</a>
+    </div>
+
+    <div class="info-box">
+        <strong>📋 Format attendu</strong>
+
+        <ul>
+            <li>Feuille <strong>Travaux</strong></li>
+            <li>Feuille <strong>Rapport dintervention</strong></li>
+        </ul>
+
+        <p>
+            Les nouvelles données seront ajoutées à la base existante.
+        </p>
+    </div>
+
+    {% if erreur %}
+        <div class="error-box">
+            {{ erreur }}
+        </div>
+    {% endif %}
+
+    {% if message %}
+        <div class="success-text">
+            {{ message|safe }}
+        </div>
+    {% endif %}
+
+    <form method="POST" enctype="multipart/form-data" class="form">
+
+        <label>Fichier Excel</label>
+
+        <label class="upload-box">
+
+            <input
+                type="file"
+                name="fichier"
+                accept=".xlsx"
+                required
+                onchange="updateExcel(this)"
+            >
+
+            <div class="upload-content">
+
+                <div class="upload-icon">
+                    📄
+                </div>
+
+                <strong>
+                    Sélectionner un fichier Excel
+                </strong>
+
+                <p id="excel-name">
+                    Cliquez pour choisir votre fichier
+                </p>
+
+            </div>
+
+        </label>
+
+        <label>Mode d'import</label>
+
+        <div class="import-choice">
+
+            <label>
+                <input
+                    type="radio"
+                    name="mode_import"
+                    value="ajouter"
+                    checked
+                >
+
+                ➕ Ajouter aux données existantes
+            </label>
+
+            <label>
+                <input
+                    type="radio"
+                    name="mode_import"
+                    value="remplacer"
+                >
+
+                🔄 Remplacer toutes les données existantes
+            </label>
+
+        </div>
+
+        <button class="btn" type="submit">
+            📥 Importer les données
+        </button>
+
+    </form>
+
+</section>
+
+<script>
+
+function updateExcel(input){
+
+    const text = document.getElementById("excel-name");
+
+    if(input.files.length){
+
+        text.innerHTML =
+            "✅ " + input.files[0].name;
+
+    }
+
+}
+
+</script>
+
+{% endblock %}

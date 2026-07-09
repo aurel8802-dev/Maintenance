@@ -74,6 +74,11 @@ def init_db():
         "Axame",
         "Pourfendeuse",
         "Extérieur",
+        "Mag Auto",
+        "Poste HT",
+        "Réseau Eau",
+        "Tuberie",
+        "Batiments",
         "Pont n°2",
         "Hall 1",
         "Hall 2",
@@ -88,5 +93,19 @@ def init_db():
             "INSERT OR IGNORE INTO secteurs (nom) VALUES (?)",
             (secteur,)
         )
+
+    colonnes_a_ajouter = [
+        ("date_solde", "TIMESTAMP"),
+        ("solde_par", "TEXT"),
+        ("reference_piece", "TEXT"),
+        ("commentaire_solde", "TEXT")
+    ]
+
+    for nom_colonne, type_colonne in colonnes_a_ajouter:
+        try:
+            conn.execute(f"ALTER TABLE demandes_intervention ADD COLUMN {nom_colonne} {type_colonne}")
+        except sqlite3.OperationalError:
+            pass
+        
     conn.commit()
     conn.close()

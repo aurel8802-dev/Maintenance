@@ -1,0 +1,108 @@
+{% extends "base.html" %}
+
+{% block content %}
+
+<section class="card detail-card">
+
+    <div class="detail-top">
+        <a href="/rapports" class="btn-secondary">← Retour aux rapports</a>
+    </div>
+
+    <div class="detail-title">
+        <div>
+            <h2>{{ rapport.machine }}</h2>
+            <p>Fiche complète du rapport d'intervention</p>
+        </div>
+    </div>
+
+    <div class="detail-grid">
+
+        <div class="detail-item">
+            <span>📅 Date</span>
+            <strong>{{ rapport.date_rapport|date_fr }}</strong>
+        </div>
+
+        <div class="detail-item">
+            <span>🏭 Secteur</span>
+            <strong>{{ rapport.secteur_nom or "Non renseigné" }}</strong>
+        </div>
+
+        <div class="detail-item">
+            <span>👷 Technicien</span>
+            <strong>{{ rapport.technicien }}</strong>
+        </div>
+
+        <div class="detail-item">
+            <span>📦 Référence</span>
+            <strong>{{ rapport.reference or "-" }}</strong>
+        </div>
+
+    </div>
+
+    <div class="detail-section">
+        <span>⚙️ Machine</span>
+        <p>{{ rapport.machine }}</p>
+    </div>
+
+    <div class="detail-section">
+        <span>⚠️ Problème</span>
+        <p>{{ rapport.probleme }}</p>
+    </div>
+
+    <div class="detail-section">
+        <span>🔧 Travaux réalisés</span>
+        <p>{{ rapport.travaux }}</p>
+    </div>
+
+    <div class="detail-section">
+        <span>💬 Commentaire</span>
+        <p>{{ rapport.commentaire or "Aucun commentaire" }}</p>
+    </div>
+
+    <div class="detail-section">
+        <span>📷 Photos</span>
+
+        {% if photos %}
+            <div class="photos-grid">
+                {% for photo in photos %}
+                    <img
+                        src="{{ url_for('uploaded_photo', filename=photo.nom_fichier) }}"
+                        alt="Photo rapport"
+                        class="photo-thumbnail"
+                        onclick="openImage(this.src)"
+                    >
+                {% endfor %}
+            </div>
+        {% else %}
+            <p>Aucune photo ajoutée pour le moment.</p>
+        {% endif %}
+    </div>
+
+    <div class="detail-actions">
+        <div class="detail-actions-left"></div>
+
+        <div class="detail-actions-right">
+            <a href="/rapports/{{ rapport.id }}/modifier" class="btn">✏️ Modifier</a>
+            <a href="#" class="btn-danger">🗑️ Supprimer</a>
+        </div>
+    </div>
+
+</section>
+
+<div id="imageModal" class="image-modal" onclick="closeImage()">
+    <span class="close-image">&times;</span>
+    <img id="imagePreview" class="image-preview">
+</div>
+
+<script>
+function openImage(src) {
+    document.getElementById("imagePreview").src = src;
+    document.getElementById("imageModal").style.display = "flex";
+}
+
+function closeImage() {
+    document.getElementById("imageModal").style.display = "none";
+}
+</script>
+
+{% endblock %}

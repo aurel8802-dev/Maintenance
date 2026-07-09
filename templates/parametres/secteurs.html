@@ -1,0 +1,72 @@
+{% extends "base.html" %}
+
+{% block content %}
+
+<section class="card">
+    <div class="section-header">
+        <div>
+            <h2>🏭 Secteurs</h2>
+            <p>Gestion des secteurs disponibles.</p>
+        </div>
+
+        <a href="/parametres" class="btn-secondary">← Retour</a>
+    </div>
+
+    {% if erreur %}
+        <p class="warning-text">{{ erreur }}</p>
+    {% endif %}
+
+    {% if message %}
+        <p class="success-text">{{ message }}</p>
+    {% endif %}
+
+    <form method="POST" class="form">
+        <label>Nouveau secteur</label>
+        <input type="text" name="nom" placeholder="Ex : Hall 3" required>
+
+        <button type="submit" class="btn">Ajouter le secteur</button>
+    </form>
+
+    <hr>
+
+    <h3>Secteurs existants</h3>
+
+    {% if secteurs %}
+        <div class="table-container">
+            <table class="modern-table">
+                <thead>
+                    <tr>
+                        <th>Nom</th>
+                        <th style="width: 160px;">Actions</th>
+                    </tr>
+                </thead>
+
+                <tbody>
+                    {% for secteur in secteurs %}
+                        <tr>
+                            <td>{{ secteur.nom }}</td>
+                            <td>
+                                <form
+                                    method="POST"
+                                    action="/parametres/secteurs/{{ secteur.id }}/supprimer"
+                                    onsubmit="return confirm('Supprimer ce secteur ?');"
+                                >
+                                    <button type="submit" class="btn-danger">
+                                        🗑️ Supprimer
+                                    </button>
+                                </form>
+                            </td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    {% else %}
+        <div class="empty-state">
+            <div class="icon">📭</div>
+            <p>Aucun secteur enregistré.</p>
+        </div>
+    {% endif %}
+</section>
+
+{% endblock %}

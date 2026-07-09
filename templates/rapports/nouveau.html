@@ -1,0 +1,107 @@
+{% extends "base.html" %}
+
+{% block content %}
+
+<section class="card">
+
+    <div class="section-header">
+        <div>
+            <h2>Nouveau rapport d'intervention</h2>
+            <p>Renseigner les travaux réalisés.</p>
+        </div>
+    </div>
+
+    <form method="POST" enctype="multipart/form-data" class="form">
+
+        <label>Secteur</label>
+        <select name="secteur_id" required>
+            <option value="">-- Choisir un secteur --</option>
+            {% for secteur in secteurs %}
+                <option value="{{ secteur.id }}">
+                    {{ secteur.nom }}
+                </option>
+            {% endfor %}
+        </select>
+
+        <label>Machine</label>
+        <input type="text" name="machine" required>
+
+        <label>Problème</label>
+        <textarea name="probleme" rows="4" required></textarea>
+
+        <label>Travaux réalisés</label>
+        <textarea name="travaux" rows="4" required></textarea>
+
+        <label>Nom du technicien</label>
+        <input type="text" name="technicien" required>
+
+        <label>Commentaire</label>
+        <textarea name="commentaire" rows="4"></textarea>
+
+        <label>Référence</label>
+        <input type="text" name="reference">
+
+        <label>Photo</label>
+
+        <label class="upload-box">
+
+            <input
+                type="file"
+                name="photo"
+                accept="image/*"
+                onchange="updateFileName(this)"
+            >
+
+            <div class="upload-content">
+
+                <div class="upload-icon">
+                    📷
+                </div>
+
+                <img
+                    id="preview-image"
+                    class="preview-image"
+                    style="display:none;"
+                >
+
+                <strong>
+                    Ajouter une photo
+                </strong>
+
+                <p id="file-name">
+                    Cliquez pour sélectionner une image
+                </p>
+
+            </div>
+
+        </label>
+
+        <button class="btn" type="submit">
+            Enregistrer le rapport
+        </button>
+
+    </form>
+
+</section>
+
+<script>
+
+function updateFileName(input){
+
+    const preview = document.getElementById("preview-image");
+    const text = document.getElementById("file-name");
+
+    if(input.files.length){
+
+        preview.src = URL.createObjectURL(input.files[0]);
+        preview.style.display = "block";
+
+        text.innerHTML = "✅ " + input.files[0].name;
+
+    }
+
+}
+
+</script>
+
+{% endblock %}

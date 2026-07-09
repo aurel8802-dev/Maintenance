@@ -5,11 +5,15 @@ from flask import Flask, render_template, send_from_directory
 from database import init_db, get_db_connection
 from routes.demandes import demandes_bp
 
+from routes.rapports import rapports_bp
+from routes.parametres import parametres_bp
+
 app = Flask(__name__)
 
 app.config["UPLOAD_FOLDER"] = os.path.join(os.getcwd(), "uploads", "photos")
 os.makedirs(app.config["UPLOAD_FOLDER"], exist_ok=True)
 
+app.register_blueprint(parametres_bp)
 
 @app.template_filter("date_fr")
 def date_fr(value):
@@ -24,7 +28,7 @@ def uploaded_photo(filename):
 
 
 app.register_blueprint(demandes_bp)
-
+app.register_blueprint(rapports_bp)
 
 @app.route("/")
 def index():

@@ -1,0 +1,41 @@
+{% extends "base.html" %}
+
+{% block content %}
+
+<section class="card danger-zone">
+
+    <div class="section-header">
+        <div>
+            <h2>⚠️ Réinitialiser les données</h2>
+            <p>Cette action est irréversible.</p>
+        </div>
+
+        <a href="/parametres" class="btn-secondary">← Retour</a>
+    </div>
+
+    <p class="warning-text">
+        Cette action supprimera toutes les demandes, rapports, photos et demandeurs.
+        Les secteurs seront conservés.
+    </p>
+
+    {% if erreur %}
+        <p class="warning-text">{{ erreur }}</p>
+    {% endif %}
+
+    {% if message %}
+        <p class="success-text">{{ message }}</p>
+    {% endif %}
+
+    <form method="POST" class="form">
+        <label>Code administrateur</label>
+        <input type="password" name="code" required>
+
+        <button type="submit" class="btn-danger"
+                onclick="return confirm('Confirmer la suppression définitive de toutes les données ?')">
+            Réinitialiser définitivement
+        </button>
+    </form>
+
+</section>
+
+{% endblock %}

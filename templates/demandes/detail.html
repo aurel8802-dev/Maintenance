@@ -18,10 +18,12 @@
             <p>Fiche complète de la demande d'intervention</p>
         </div>
 
-        <span class="badge badge-progress">
-            {{ demande.statut }}
-        </span>
-    </div>
+    {% if demande.statut == "Soldé" %}
+        <span class="badge badge-success">✅ Soldé</span>
+    {% else %}
+        <span class="badge badge-progress">🟡 En cours</span>
+    {% endif %}
+        </div>
 
     <div class="detail-grid">
 
@@ -52,6 +54,17 @@
         <p>{{ demande.description }}</p>
     </div>
 
+        {% if demande.statut == "Soldé" %}
+    <div class="detail-section solded-section">
+        <span>✅ Informations de clôture</span>
+
+        <p><strong>Date de solde :</strong> {{ demande.date_solde|date_fr }}</p>
+        <p><strong>Soldé par :</strong> {{ demande.solde_par or "-" }}</p>
+        <p><strong>Référence pièce remplacée :</strong> {{ demande.reference_piece or "-" }}</p>
+        <p><strong>Commentaire :</strong> {{ demande.commentaire_solde or "-" }}</p>
+    </div>
+    {% endif %}
+
     <div class="detail-section">
         <span>📷 Photos</span>
 
@@ -74,9 +87,11 @@
     <div class="detail-actions">
 
         <div class="detail-actions-left">
-            <a href="#" class="btn-secondary">
-                📄 Créer un rapport
+        {% if demande.statut != "Soldé" %}
+            <a href="/demandes/{{ demande.id }}/solder" class="btn-secondary">
+                ✅ Soldé
             </a>
+        {% endif %}
         </div>
 
         <div class="detail-actions-right">

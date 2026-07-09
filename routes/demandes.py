@@ -2,6 +2,7 @@ from flask import Blueprint, render_template, request, redirect, url_for, curren
 from database import get_db_connection
 import os
 from werkzeug.utils import secure_filename
+from datetime import datetime
 
 demandes_bp = Blueprint("demandes", __name__)
 
@@ -280,3 +281,52 @@ def supprimer_demande(demande_id):
     conn.close()
 
     return render_template("demandes/supprimer.html", demande=demande)
+
+@demandes_bp.route("/demandes/<int:demande_id>/solder", methods=["GET", "POST"])
+def solder_demande(demande_id):
+    conn = get_db_connection()
+
+    demande = conn.execute("""
+        SELECT demandes_intervention.*,
+               demandeurs.nom AS demandeur_nom,
+               secteurs.nom AS secteur_nom
+        FROM demandes_intervention
+        LEFT JOIN demandeurs ON demandes_intervention.demandeur_id = demandeurs.id
+        LEFT JOIN secteurs ON demandes_intervention.secteur_id = secteurs.id
+        WHERE demandes_intervention.id = ?
+    """, (demande_id,)).fetchone()
+
+    if demande is None:
+        conn.close()
+        return "Demande introuvable", 404
+
+    if request.method == "POST":
+        solde_par = request.form["solde_par"]
+        reference_piece = request.form["reference_piece"]
+        commentaire_solde = request.form["commentaire_solde"]
+
+        conn.execute("""
+            UPDATE demandes_intervention
+            SET statut = ?,
+                date_solde = ?,
+                solde_par = ?,
+                reference_piece = ?,
+                commentaire_solde = ?
+            WHERE id = ?
+        """, (
+            "Soldé",
+            datetime.now().isoformat(timespec="seconds"),
+            solde_par,
+            reference_piece,
+            commentaire_solde,
+            demande_id
+        ))
+
+        conn.commit()
+        conn.close()
+
+        return redirect(url_for("demandes.detail_demande", demande_id=demande_id))
+
+    conn.close()
+
+    return render_template("demandes/solder.html", demande=demande)

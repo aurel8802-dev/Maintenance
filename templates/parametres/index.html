@@ -1,0 +1,67 @@
+{% extends "base.html" %}
+
+{% block content %}
+
+<section class="card">
+
+    <div class="section-header">
+        <div>
+            <h2>⚙️ Paramètres</h2>
+            <p>Configuration de l'application.</p>
+        </div>
+    </div>
+
+    <div class="settings-grid">
+
+        <div class="settings-card">
+            <h3>🗄️ Données</h3>
+
+            <p>
+                Réinitialiser toutes les données enregistrées dans l'application.
+            </p>
+
+            <a href="/parametres/reset" class="btn-danger">
+                🗑️ Réinitialiser les données
+            </a>
+        </div>
+
+        <div class="settings-card">
+            <h3>🏭 Secteurs</h3>
+
+            <p>
+                Ajouter ou consulter les secteurs disponibles dans les formulaires.
+            </p>
+
+            <a href="/parametres/secteurs" class="btn">
+                Gérer les secteurs
+            </a>
+        </div>
+
+        <div class="settings-card">
+            <h3>📥 Import</h3>
+
+            <p>
+                Importer les anciennes demandes et rapports depuis un fichier Excel.
+            </p>
+
+            <a href="/parametres/import" class="btn">
+                Importer un fichier Excel
+            </a>
+        </div>
+
+        <div class="settings-card">
+            <h3>📤 Export</h3>
+
+            <p>
+                Exporter les demandes et les rapports dans un fichier Excel.
+            </p>
+
+            <a href="/parametres/export" class="btn">
+                Exporter les données
+            </a>
+        </div>
+    </div>
+
+</section>
+
+{% endblock %}
