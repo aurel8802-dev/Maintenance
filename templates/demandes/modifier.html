@@ -1,0 +1,94 @@
+{% extends "base.html" %}
+
+{% block content %}
+
+<section class="card">
+    <div class="section-header">
+        <div>
+            <h2>Modifier la demande</h2>
+            <p>DI-{{ "%05d"|format(demande.id) }}</p>
+        </div>
+
+        <a href="/demandes/{{ demande.id }}" class="btn-secondary">← Retour</a>
+    </div>
+
+    <form method="POST" class="form" enctype="multipart/form-data">
+
+        <label>Secteur</label>
+        <select name="secteur_id" required>
+            {% for secteur in secteurs %}
+                <option value="{{ secteur.id }}"
+                    {% if secteur.id == demande.secteur_id %}selected{% endif %}>
+                    {{ secteur.nom }}
+                </option>
+            {% endfor %}
+        </select>
+
+        <label>Demandeur</label>
+        <input type="text" name="demandeur"
+               value="{{ demandeur.nom if demandeur else '' }}"
+               required>
+
+        <label>Objet de la demande</label>
+        <input type="text" name="nature_travaux"
+               value="{{ demande.nature_travaux }}"
+               required>
+
+        <label>Description</label>
+        <textarea name="description" rows="5" required>{{ demande.description }}</textarea>
+
+        <label>Photo</label>
+
+        <label class="upload-box">
+
+            <input
+                type="file"
+                name="photo"
+                id="photo"
+                accept="image/*"
+                onchange="updateFileName(this)"
+            >
+
+            <div class="upload-content">
+
+                <div class="upload-icon">📷</div>
+
+                <img id="preview-image" class="preview-image" style="display:none;">
+
+                <strong>Ajouter une photo</strong>
+
+                <p id="file-name">
+                    Cliquez pour sélectionner une image
+                </p>
+
+            </div>
+
+        </label>
+        <button type="submit" class="btn">Enregistrer les modifications</button>
+
+    </form>
+</section>
+
+<script>
+
+function updateFileName(input){
+
+    const text = document.getElementById("file-name");
+    const preview = document.getElementById("preview-image");
+
+    if(input.files.length){
+
+        const file = input.files[0];
+
+        text.innerHTML = "✅ " + file.name;
+
+        preview.src = URL.createObjectURL(file);
+        preview.style.display = "block";
+
+    }
+
+}
+
+</script>
+
+{% endblock %}

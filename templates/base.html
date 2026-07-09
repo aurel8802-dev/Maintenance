@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="fr">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <title>GM Interventions</title>
+
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+
+<body>
+
+    <div class="app-layout">
+
+        <!-- Sidebar -->
+        <aside class="sidebar">
+
+            <div class="logo">
+                <div class="logo-icon">🛠️</div>
+
+                <div>
+                    <h1>GM</h1>
+                    <p>Interventions</p>
+                </div>
+            </div>
+
+                <nav class="menu">
+                    <a href="/">🏠 Tableau de bord</a>
+                    <a href="/demandes/nouvelle">📝 Nouvelle demande</a>
+                    <a href="/demandes">📋 Demandes</a>
+                    <a href="#">📄 Rapports</a>
+                    <a href="#">📊 Statistiques</a>
+                    <a href="#">⚙️ Paramètres</a>
+                </nav>
+
+            <div class="sidebar-footer">
+                <p>Application maintenance</p>
+                <small>Version 1.0</small>
+            </div>
+
+        </aside>
+
+        <!-- Contenu principal -->
+        <div class="content-area">
+
+            <header class="topbar">
+
+                <div>
+                    <h2>Tableau de bord</h2>
+                    <p>Gestion des demandes d'intervention</p>
+                </div>
+
+                <a href="/demandes/nouvelle" class="btn">+ Nouvelle demande</a>
+
+            </header>
+
+            <main>
+                {% block content %}
+                {% endblock %}
+            </main>
+
+        </div>
+
+    </div>
+
+</body>
+
+</html>

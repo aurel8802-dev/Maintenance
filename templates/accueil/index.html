@@ -1,0 +1,43 @@
+{% extends "base.html" %}
+
+{% block content %}
+
+<section class="dashboard">
+    <div class="stat-card">
+        <span>Total demandes</span>
+        <strong>{{ total }}</strong>
+    </div>
+
+    <div class="stat-card">
+        <span>En cours</span>
+        <strong>{{ en_cours }}</strong>
+    </div>
+
+    <div class="stat-card">
+        <span>Soldées</span>
+        <strong>{{ soldees }}</strong>
+    </div>
+</section>
+
+<section class="card">
+    <h2>Demandes récentes</h2>
+
+    {% if demandes %}
+        {% for demande in demandes %}
+            <div class="demande-card">
+                <h3>{{ demande.nature_travaux }}</h3>
+                <p><strong>Secteur :</strong> {{ demande.secteur_nom or "Non renseigné" }}</p>
+                <p><strong>Demandeur :</strong> {{ demande.demandeur_nom or "Non renseigné" }}</p>
+                <p><strong>Description :</strong> {{ demande.description }}</p>
+                <p><strong>Statut :</strong> {{ demande.statut }}</p>
+            </div>
+        {% endfor %}
+    {% else %}
+        <div class="empty-state">
+            <div class="icon">📭</div>
+            <p>Aucune demande pour le moment.</p>
+        </div>
+    {% endif %}
+</section>
+
+{% endblock %}

@@ -1,0 +1,78 @@
+{% extends "base.html" %}
+
+{% block content %}
+
+<section class="card">
+    <h2>Nouvelle demande d'intervention</h2>
+    <p>Remplis les informations de la demande.</p>
+
+    <form method="POST" class="form" enctype="multipart/form-data">
+
+        <label>Secteur</label>
+        <select name="secteur_id" required>
+            <option value="">-- Choisir un secteur --</option>
+            {% for secteur in secteurs %}
+                <option value="{{ secteur.id }}">{{ secteur.nom }}</option>
+            {% endfor %}
+        </select>
+        
+        <label>Demandeur</label>
+        <input type="text" name="demandeur" placeholder="Nom du demandeur" required>
+
+        <label>Objet de la demande</label>
+        <input type="text" name="nature_travaux" placeholder="Ex : Remplacement galets, fuite hydraulique..." required>
+ 
+        <label>Description de la demande</label>
+        <textarea name="description" rows="5" placeholder="Décris la demande..." required></textarea>
+
+       <label>Photo</label>
+
+        <label class="upload-box">
+
+            <input
+                type="file"
+                name="photo"
+                id="photo"
+                accept="image/*"
+                onchange="updateFileName(this)"
+            >
+
+            <div class="upload-content">
+                <div class="upload-icon">📷</div>
+
+                <img id="preview-image" class="preview-image" style="display:none;">
+
+                <strong>Ajouter une photo</strong>
+
+                <p id="file-name">
+                    Cliquez pour sélectionner une image
+                </p>
+            </div>
+
+        </label>
+        <button type="submit" class="btn">Enregistrer la demande</button>
+
+    </form>
+</section>
+
+<script>
+function updateFileName(input){
+
+    const text = document.getElementById("file-name");
+    const preview = document.getElementById("preview-image");
+
+    if(input.files.length){
+
+        const file = input.files[0];
+
+        text.innerHTML = "✅ " + file.name;
+
+        preview.src = URL.createObjectURL(file);
+        preview.style.display = "block";
+
+    }
+
+}
+</script>
+
+{% endblock %}

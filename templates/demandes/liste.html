@@ -1,0 +1,114 @@
+{% extends "base.html" %}
+
+{% block content %}
+
+<section class="card">
+    <div class="section-header">
+        <div>
+            <h2>Demandes d'intervention</h2>
+            <p>Liste complète des demandes enregistrées.</p>
+        </div>
+
+        <a href="/demandes/nouvelle" class="btn">+ Nouvelle demande</a>
+    </div>
+
+<form method="GET" class="filters-bar" id="filtersForm">
+
+    <input 
+        type="text" 
+        name="recherche" 
+        placeholder="Rechercher..."
+        value="{{ recherche }}"
+        oninput="submitFiltersDelayed()"
+    >
+
+    <select name="secteur_id" onchange="document.getElementById('filtersForm').submit()">
+        <option value="">Tous les secteurs</option>
+        {% for secteur in secteurs %}
+            <option value="{{ secteur.id }}" {% if secteur_id == secteur.id|string %}selected{% endif %}>
+                {{ secteur.nom }}
+            </option>
+        {% endfor %}
+    </select>
+
+    <select name="statut" onchange="document.getElementById('filtersForm').submit()">
+        <option value="">Tous les statuts</option>
+        <option value="En cours" {% if statut == "En cours" %}selected{% endif %}>En cours</option>
+        <option value="Soldé" {% if statut == "Soldé" %}selected{% endif %}>Soldé</option>
+    </select>
+
+    <select name="tri" onchange="document.getElementById('filtersForm').submit()">
+        <option value="recent" {% if tri == "recent" %}selected{% endif %}>Plus récent</option>
+        <option value="ancien" {% if tri == "ancien" %}selected{% endif %}>Plus ancien</option>
+        <option value="secteur" {% if tri == "secteur" %}selected{% endif %}>Par secteur</option>
+        <option value="statut" {% if tri == "statut" %}selected{% endif %}>Par statut</option>
+    </select>
+
+    <a href="/demandes" class="btn-secondary">Réinitialiser</a>
+
+</form>
+
+<p class="result-count">
+    {{ demandes|length }} demande{{ "s" if demandes|length > 1 else "" }} trouvée{{ "s" if demandes|length > 1 else "" }}
+</p>
+
+    {% if demandes %}
+        <div class="table-container">
+            <table class="modern-table">
+                <thead>
+                    <tr>
+                        <th>Date</th>
+                        <th>Statut</th>
+                        <th>Demande</th>
+                        <th>Secteur</th>
+                        <th>Demandeur</th>
+                    </tr>
+                </thead>
+
+                <tbody>
+
+                    {% for demande in demandes %}
+
+                    <tr class="clickable-row" onclick="window.location='/demandes/{{ demande.id }}'">
+
+                        <td>{{ demande.date_creation|date_fr }}</td>
+
+                        <td>
+                            <span class="badge badge-progress">
+                                {{ demande.statut }}
+                            </span>
+                        </td>
+
+                        <td>{{ demande.nature_travaux }}</td>
+
+                        <td>{{ demande.secteur_nom or "Non renseigné" }}</td>
+
+                        <td>{{ demande.demandeur_nom or "Non renseigné" }}</td>
+
+                    </tr>
+
+                    {% endfor %}
+
+                    </tbody>
+            </table>
+        </div>
+    {% else %}
+        <div class="empty-state">
+            <div class="icon">📭</div>
+            <p>Aucune demande enregistrée.</p>
+        </div>
+    {% endif %}
+</section>
+
+<script>
+    let searchTimer;
+
+    function submitFiltersDelayed() {
+        clearTimeout(searchTimer);
+        searchTimer = setTimeout(function () {
+            document.getElementById("filtersForm").submit();
+        }, 500);
+    }
+</script>
+
+{% endblock %}

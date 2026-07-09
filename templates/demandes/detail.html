@@ -1,0 +1,115 @@
+{% extends "base.html" %}
+
+{% block content %}
+
+<section class="card detail-card">
+
+    <div class="detail-top">
+        <a href="/demandes" class="btn-secondary">← Retour aux demandes</a>
+
+        <span class="request-number">
+            DI-{{ "%05d"|format(demande.id) }}
+        </span>
+    </div>
+
+    <div class="detail-title">
+        <div>
+            <h2>{{ demande.nature_travaux }}</h2>
+            <p>Fiche complète de la demande d'intervention</p>
+        </div>
+
+        <span class="badge badge-progress">
+            {{ demande.statut }}
+        </span>
+    </div>
+
+    <div class="detail-grid">
+
+        <div class="detail-item">
+            <span>📅 Date</span>
+            <strong>{{ demande.date_creation|date_fr }}</strong>
+        </div>
+
+        <div class="detail-item">
+            <span>🏭 Secteur</span>
+            <strong>{{ demande.secteur_nom or "Non renseigné" }}</strong>
+        </div>
+
+        <div class="detail-item">
+            <span>👤 Demandeur</span>
+            <strong>{{ demande.demandeur_nom or "Non renseigné" }}</strong>
+        </div>
+
+    </div>
+
+    <div class="detail-section">
+        <span>📝 Objet de la demande</span>
+        <p>{{ demande.nature_travaux }}</p>
+    </div>
+
+    <div class="detail-section">
+        <span>📄 Description</span>
+        <p>{{ demande.description }}</p>
+    </div>
+
+    <div class="detail-section">
+        <span>📷 Photos</span>
+
+        {% if photos %}
+            <div class="photos-grid">
+                {% for photo in photos %}
+                    <img
+                        src="{{ url_for('uploaded_photo', filename=photo.nom_fichier) }}"
+                        alt="Photo demande"
+                        class="photo-thumbnail"
+                        onclick="openImage(this.src)"
+                    >
+                {% endfor %}
+            </div>
+        {% else %}
+            <p>Aucune photo ajoutée pour le moment.</p>
+        {% endif %}
+    </div>
+
+    <div class="detail-actions">
+
+        <div class="detail-actions-left">
+            <a href="#" class="btn-secondary">
+                📄 Créer un rapport
+            </a>
+        </div>
+
+        <div class="detail-actions-right">
+            <a href="/demandes/{{ demande.id }}/modifier" class="btn">
+                ✏️ Modifier
+            </a>
+
+            <a href="/demandes/{{ demande.id }}/supprimer" class="btn-danger">
+                🗑️ Supprimer
+            </a>
+        </div>
+
+    </div>
+
+</section>
+
+<div id="imageModal" class="image-modal" onclick="closeImage()">
+    <span class="close-image">&times;</span>
+
+    <img id="imagePreview" class="image-preview">
+</div>
+
+<script>
+
+function openImage(src){
+    document.getElementById("imagePreview").src = src;
+    document.getElementById("imageModal").style.display = "flex";
+}
+
+function closeImage(){
+    document.getElementById("imageModal").style.display = "none";
+}
+
+</script>
+
+{% endblock %}
