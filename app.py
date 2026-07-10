@@ -95,7 +95,6 @@ def index():
         en_cours=en_cours,
         soldees=soldees,
         demandes=demandes,
-        db_type="Neon PostgreSQL" if DATABASE_URL else "SQLite"
     )
 
 
