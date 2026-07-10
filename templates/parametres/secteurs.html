@@ -29,6 +29,29 @@
 
     <hr>
 
+    <div class="sector-cleanup">
+    <div>
+        <strong>Nettoyage automatique</strong>
+        <p>
+            Fusionne les doublons, uniformise les noms et supprime
+            le secteur « Non renseigné », sans perdre les demandes
+            ni les rapports associés.
+        </p>
+    </div>
+
+        <form
+            method="POST"
+            action="/parametres/secteurs/nettoyer"
+            onsubmit="return confirm(
+                'Nettoyer et fusionner les secteurs en double ?'
+            );"
+        >
+            <button type="submit" class="btn-secondary">
+                🧹 Nettoyer les secteurs
+            </button>
+        </form>
+    </div>
+
     <h3>Secteurs existants</h3>
 
     {% if secteurs %}

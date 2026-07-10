@@ -830,3 +830,43 @@ main {
     width:auto;
     flex:none;
 }
+
+.sector-cleanup {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 20px;
+
+    margin: 24px 0;
+    padding: 18px;
+
+    background: #f8fafc;
+    border: 1px solid #cbd5e1;
+    border-radius: 16px;
+}
+
+.sector-cleanup strong {
+    display: block;
+    margin-bottom: 5px;
+}
+
+.sector-cleanup p {
+    margin: 0;
+    color: #64748b;
+}
+
+.sector-cleanup form {
+    flex-shrink: 0;
+}
+
+@media (max-width: 700px) {
+    .sector-cleanup {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .sector-cleanup .btn-secondary {
+        width: 100%;
+        text-align: center;
+    }
+}

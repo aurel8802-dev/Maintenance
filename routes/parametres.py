@@ -54,14 +54,123 @@ def reset_donnees():
         erreur=erreur
     )
 
+def nom_secteur_normalise(nom):
+    if not nom:
+        return None
+
+    nom_nettoye = str(nom).strip()
+
+    correspondances = {
+        "axame": "Axame",
+
+        "batiments": "Bâtiments",
+        "bâtiments": "Bâtiments",
+
+        "extérieur": "Extérieur",
+        "exterieur": "Extérieur",
+
+        "hall 1": "Hall 1",
+        "hall1": "Hall 1",
+
+        "hall 2": "Hall 2",
+        "hall2": "Hall 2",
+
+        "mag auto": "Mag Auto",
+
+        "maintenance": "Maintenance",
+
+        "pont n°2": "Pont n°2",
+        "pont n 2": "Pont n°2",
+        "pont n2": "Pont n°2",
+
+        "poste ht": "Poste HT",
+
+        "pourfendeuse": "Pourfendeuse",
+        "refendeuse": "Pourfendeuse",
+
+        "réseau eau": "Réseau Eau",
+        "reseau eau": "Réseau Eau",
+        "réseau d'eau": "Réseau Eau",
+        "reseau d'eau": "Réseau Eau",
+
+        "tuberie": "Tuberie",
+
+        "v2": "V2",
+        "v 2": "V2",
+
+        "v3": "V3",
+        "v 3": "V3",
+
+        "v2-v3": "V2-V3",
+        "v2 - v3": "V2-V3",
+        "v2 / v3": "V2-V3",
+
+        "v6": "V6",
+        "v 6": "V6",
+
+        "non renseigné": None,
+        "non renseigne": None
+    }
+
+    return correspondances.get(
+        nom_nettoye.lower(),
+        nom_nettoye
+    )
+
 @parametres_bp.route("/parametres/secteurs", methods=["GET", "POST"])
 def gerer_secteurs():
     message = None
     erreur = None
+
+    nettoyage = request.args.get("nettoyage")
+
+    if nettoyage == "ok":
+        fusionnes = request.args.get("fusionnes", "0")
+        supprimes = request.args.get("supprimes", "0")
+
+        message = (
+            f"Nettoyage terminé : "
+            f"{fusionnes} doublon(s) fusionné(s) et "
+            f"{supprimes} secteur(s) vide(s) supprimé(s)."
+        )
+
+    elif nettoyage == "erreur":
+        erreur = (
+            "Erreur pendant le nettoyage : "
+            + request.args.get("detail", "erreur inconnue")
+        )
+
     conn = get_db_connection()
 
     if request.method == "POST":
-        nom = request.form.get("nom", "").strip()
+        nom = clean(request.form.get("nom", ""))
+
+        correspondances = {
+            "axame": "Axame",
+            "batiments": "Bâtiments",
+            "bâtiments": "Bâtiments",
+            "extérieur": "Extérieur",
+            "exterieur": "Extérieur",
+            "hall 1": "Hall 1",
+            "hall 2": "Hall 2",
+            "mag auto": "Mag Auto",
+            "maintenance": "Maintenance",
+            "pont n°2": "Pont n°2",
+            "pont n 2": "Pont n°2",
+            "poste ht": "Poste HT",
+            "pourfendeuse": "Pourfendeuse",
+            "refendeuse": "Pourfendeuse",
+            "réseau eau": "Réseau Eau",
+            "réseau d'eau": "Réseau Eau",
+            "reseau eau": "Réseau Eau",
+            "tuberie": "Tuberie",
+            "v2": "V2",
+            "v3": "V3",
+            "v2-v3": "V2-V3",
+            "v6": "V6"
+        }
+
+        nom = correspondances.get(nom.lower(), nom.title())
 
         if not nom:
             erreur = "Le nom du secteur est obligatoire."
@@ -113,6 +222,154 @@ def supprimer_secteur(secteur_id):
 
     return redirect(url_for("parametres.gerer_secteurs"))
 
+@parametres_bp.route(
+    "/parametres/secteurs/nettoyer",
+    methods=["POST"]
+)
+def nettoyer_secteurs():
+    conn = get_db_connection()
+
+    try:
+        secteurs = conn.execute("""
+            SELECT id, nom
+            FROM secteurs
+            ORDER BY id
+        """).fetchall()
+
+        secteurs_fusionnes = 0
+        secteurs_supprimes = 0
+
+        for secteur in secteurs:
+            secteur_id = secteur["id"]
+            ancien_nom = secteur["nom"]
+            nom_correct = nom_secteur_normalise(ancien_nom)
+
+            # Cas du faux secteur "Non renseigné"
+            if nom_correct is None:
+                conn.execute("""
+                    UPDATE demandes_intervention
+                    SET secteur_id = NULL
+                    WHERE secteur_id = ?
+                """, (secteur_id,))
+
+                conn.execute("""
+                    UPDATE rapports_intervention
+                    SET secteur_id = NULL
+                    WHERE secteur_id = ?
+                """, (secteur_id,))
+
+                conn.execute("""
+                    UPDATE demandeurs
+                    SET secteur_id = NULL
+                    WHERE secteur_id = ?
+                """, (secteur_id,))
+
+                conn.execute("""
+                    DELETE FROM secteurs
+                    WHERE id = ?
+                """, (secteur_id,))
+
+                secteurs_supprimes += 1
+                continue
+
+            # Recherche du secteur officiel
+            secteur_officiel = conn.execute("""
+                SELECT id, nom
+                FROM secteurs
+                WHERE LOWER(TRIM(nom)) = LOWER(TRIM(?))
+                ORDER BY
+                    CASE WHEN nom = ? THEN 0 ELSE 1 END,
+                    id
+                LIMIT 1
+            """, (
+                nom_correct,
+                nom_correct
+            )).fetchone()
+
+            if secteur_officiel:
+                secteur_officiel_id = secteur_officiel["id"]
+            else:
+                cursor = conn.execute("""
+                    INSERT INTO secteurs (nom)
+                    VALUES (?)
+                """, (nom_correct,))
+
+                secteur_officiel_id = cursor.lastrowid
+
+            # Si le secteur actuel est un doublon,
+            # on rattache toutes ses données au secteur officiel
+            if secteur_id != secteur_officiel_id:
+                conn.execute("""
+                    UPDATE demandes_intervention
+                    SET secteur_id = ?
+                    WHERE secteur_id = ?
+                """, (
+                    secteur_officiel_id,
+                    secteur_id
+                ))
+
+                conn.execute("""
+                    UPDATE rapports_intervention
+                    SET secteur_id = ?
+                    WHERE secteur_id = ?
+                """, (
+                    secteur_officiel_id,
+                    secteur_id
+                ))
+
+                conn.execute("""
+                    UPDATE demandeurs
+                    SET secteur_id = ?
+                    WHERE secteur_id = ?
+                """, (
+                    secteur_officiel_id,
+                    secteur_id
+                ))
+
+                conn.execute("""
+                    DELETE FROM secteurs
+                    WHERE id = ?
+                """, (secteur_id,))
+
+                secteurs_fusionnes += 1
+
+            # Si c'est le bon secteur mais avec une mauvaise casse,
+            # on corrige simplement son nom
+            elif ancien_nom != nom_correct:
+                conn.execute("""
+                    UPDATE secteurs
+                    SET nom = ?
+                    WHERE id = ?
+                """, (
+                    nom_correct,
+                    secteur_id
+                ))
+
+        conn.commit()
+
+        return redirect(
+            url_for(
+                "parametres.gerer_secteurs",
+                nettoyage="ok",
+                fusionnes=secteurs_fusionnes,
+                supprimes=secteurs_supprimes
+            )
+        )
+
+    except Exception as e:
+        conn.rollback()
+
+        return redirect(
+            url_for(
+                "parametres.gerer_secteurs",
+                nettoyage="erreur",
+                detail=str(e)
+            )
+        )
+
+    finally:
+        conn.close()
+
 def clean(value):
     if pd.isna(value):
         return ""
@@ -130,23 +387,55 @@ def to_date(value):
 
 def get_or_create_secteur(conn, nom):
     nom = clean(nom)
-    if not nom:
-        nom = "Non renseigné"
 
-    secteur = conn.execute(
-        "SELECT id FROM secteurs WHERE nom = ?",
-        (nom,)
-    ).fetchone()
+    # Ne crée plus automatiquement le secteur "Non renseigné"
+    if not nom:
+        return None
+
+    # Uniformisation de certains noms connus
+    correspondances = {
+        "axame": "Axame",
+        "batiments": "Bâtiments",
+        "bâtiments": "Bâtiments",
+        "extérieur": "Extérieur",
+        "exterieur": "Extérieur",
+        "hall 1": "Hall 1",
+        "hall 2": "Hall 2",
+        "mag auto": "Mag Auto",
+        "maintenance": "Maintenance",
+        "pont n°2": "Pont n°2",
+        "pont n 2": "Pont n°2",
+        "poste ht": "Poste HT",
+        "pourfendeuse": "Pourfendeuse",
+        "refendeuse": "Pourfendeuse",
+        "réseau eau": "Réseau Eau",
+        "réseau d'eau": "Réseau Eau",
+        "reseau eau": "Réseau Eau",
+        "tuberie": "Tuberie",
+        "v2": "V2",
+        "v3": "V3",
+        "v2-v3": "V2-V3",
+        "v6": "V6"
+    }
+
+    nom_normalise = correspondances.get(nom.lower().strip(), nom.strip())
+
+    secteur = conn.execute("""
+        SELECT id
+        FROM secteurs
+        WHERE LOWER(TRIM(nom)) = LOWER(TRIM(?))
+        LIMIT 1
+    """, (nom_normalise,)).fetchone()
 
     if secteur:
         return secteur["id"]
 
     cursor = conn.execute(
         "INSERT INTO secteurs (nom) VALUES (?)",
-        (nom,)
+        (nom_normalise,)
     )
-    return cursor.lastrowid
 
+    return cursor.lastrowid
 
 def get_or_create_demandeur(conn, nom, secteur_id):
     nom = clean(nom)
