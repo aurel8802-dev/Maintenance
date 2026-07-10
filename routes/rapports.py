@@ -230,3 +230,43 @@ def modifier_rapport(rapport_id):
         rapport=rapport,
         secteurs=secteurs
     )
+
+@rapports_bp.route("/rapports/<int:rapport_id>/supprimer", methods=["POST"])
+def supprimer_rapport(rapport_id):
+    conn = get_db_connection()
+
+    # Récupération de la photo associée
+    photo = conn.execute("""
+        SELECT nom_fichier
+        FROM photos
+        WHERE type_element = 'rapport'
+        AND element_id = ?
+    """, (rapport_id,)).fetchone()
+
+    # Suppression du fichier photo
+    if photo:
+        chemin = os.path.join(
+            current_app.config["UPLOAD_FOLDER"],
+            photo["nom_fichier"]
+        )
+
+        if os.path.exists(chemin):
+            os.remove(chemin)
+
+    # Suppression de la référence photo
+    conn.execute("""
+        DELETE FROM photos
+        WHERE type_element = 'rapport'
+        AND element_id = ?
+    """, (rapport_id,))
+
+    # Suppression du rapport
+    conn.execute("""
+        DELETE FROM rapports_intervention
+        WHERE id = ?
+    """, (rapport_id,))
+
+    conn.commit()
+    conn.close()
+
+    return redirect(url_for("rapports.liste_rapports"))
