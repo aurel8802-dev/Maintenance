@@ -180,7 +180,9 @@ def create_postgres_tables(cursor):
             id SERIAL PRIMARY KEY,
             type_element TEXT NOT NULL,
             element_id INTEGER NOT NULL,
-            nom_fichier TEXT NOT NULL,
+            nom_fichier TEXT,
+            url_photo TEXT,
+            public_id TEXT,
             date_ajout TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         )
     """)
@@ -248,7 +250,9 @@ def create_sqlite_tables(cursor):
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             type_element TEXT NOT NULL,
             element_id INTEGER NOT NULL,
-            nom_fichier TEXT NOT NULL,
+            nom_fichier TEXT,
+            url_photo TEXT,
+            public_id TEXT,
             date_ajout TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         )
     """)
@@ -291,13 +295,52 @@ def insert_default_sectors(cursor):
                 (sector_name,)
             )
 
+def migrate_photos_table(conn):
+    cursor = conn.cursor()
 
+    if is_postgres():
+        cursor.execute("""
+            ALTER TABLE photos
+            ADD COLUMN IF NOT EXISTS url_photo TEXT
+        """)
+
+        cursor.execute("""
+            ALTER TABLE photos
+            ADD COLUMN IF NOT EXISTS public_id TEXT
+        """)
+
+        cursor.execute("""
+            ALTER TABLE photos
+            ALTER COLUMN nom_fichier DROP NOT NULL
+        """)
+
+    else:
+        columns = cursor.execute("""
+            PRAGMA table_info(photos)
+        """).fetchall()
+
+        column_names = [
+            column[1]
+            for column in columns
+        ]
+
+        if "url_photo" not in column_names:
+            cursor.execute("""
+                ALTER TABLE photos
+                ADD COLUMN url_photo TEXT
+            """)
+
+        if "public_id" not in column_names:
+            cursor.execute("""
+                ALTER TABLE photos
+                ADD COLUMN public_id TEXT
+            """)
 # -------------------------------------------------------------------
 # Initialisation
 # -------------------------------------------------------------------
 
 def init_db():
-    """Crée les tables et ajoute les secteurs par défaut."""
+    """Crée les tables, applique les migrations et ajoute les secteurs."""
     conn = get_db_connection()
 
     try:
@@ -308,6 +351,7 @@ def init_db():
         else:
             create_sqlite_tables(cursor)
 
+        migrate_photos_table(conn)
         insert_default_sectors(cursor)
 
         conn.commit()
