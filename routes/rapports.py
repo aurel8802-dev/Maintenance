@@ -1,32 +1,126 @@
-import os
-from flask import Blueprint, render_template, request, redirect, url_for, current_app
-from werkzeug.utils import secure_filename
-from database import get_db_connection
+from flask import (
+    Blueprint,
+    abort,
+    redirect,
+    render_template,
+    request,
+    url_for,
+)
+
+from services.database_service import (
+    connexion_db,
+    transaction_db,
+)
+from services.photo_service import (
+    enregistrer_photo,
+    recuperer_photos,
+    supprimer_photos,
+)
+
 
 rapports_bp = Blueprint("rapports", __name__)
 
 
-@rapports_bp.route("/rapports/nouveau", methods=["GET", "POST"])
-def nouveau_rapport():
-    conn = get_db_connection()
+# -------------------------------------------------------------------
+# Requêtes communes
+# -------------------------------------------------------------------
 
-    secteurs = conn.execute("""
-        SELECT * FROM secteurs
+RAPPORT_DETAIL_QUERY = """
+    SELECT
+        rapports_intervention.*,
+        secteurs.nom AS secteur_nom
+    FROM rapports_intervention
+    LEFT JOIN secteurs
+        ON rapports_intervention.secteur_id = secteurs.id
+    WHERE rapports_intervention.id = ?
+"""
+
+
+def get_all_secteurs(conn):
+    """Retourne les secteurs classés par ordre alphabétique."""
+    return conn.execute("""
+        SELECT *
+        FROM secteurs
         ORDER BY nom
     """).fetchall()
 
-    if request.method == "POST":
-        secteur_id = request.form["secteur_id"]
-        machine = request.form["machine"]
-        probleme = request.form["probleme"]
-        travaux = request.form["travaux"]
-        technicien = request.form["technicien"]
-        commentaire = request.form["commentaire"]
-        reference = request.form["reference"]
 
+def get_rapport(conn, rapport_id):
+    """Récupère un rapport sans le nom du secteur."""
+    return conn.execute("""
+        SELECT *
+        FROM rapports_intervention
+        WHERE id = ?
+    """, (rapport_id,)).fetchone()
+
+
+def get_rapport_detail(conn, rapport_id):
+    """Récupère un rapport avec le nom de son secteur."""
+    return conn.execute(
+        RAPPORT_DETAIL_QUERY,
+        (rapport_id,)
+    ).fetchone()
+
+
+# -------------------------------------------------------------------
+# Création d'un rapport
+# -------------------------------------------------------------------
+
+@rapports_bp.route(
+    "/rapports/nouveau",
+    methods=["GET", "POST"]
+)
+def nouveau_rapport():
+    if request.method == "GET":
+        with connexion_db() as conn:
+            secteurs = get_all_secteurs(conn)
+
+        return render_template(
+            "rapports/nouveau.html",
+            secteurs=secteurs
+        )
+
+    secteur_id = request.form.get("secteur_id", "").strip()
+    machine = request.form.get("machine", "").strip()
+    probleme = request.form.get("probleme", "").strip()
+    travaux = request.form.get("travaux", "").strip()
+    technicien = request.form.get("technicien", "").strip()
+    commentaire = request.form.get("commentaire", "").strip()
+    reference = request.form.get("reference", "").strip()
+
+    if not all([
+        secteur_id,
+        machine,
+        probleme,
+        travaux,
+        technicien
+    ]):
+        with connexion_db() as conn:
+            secteurs = get_all_secteurs(conn)
+
+        return (
+            render_template(
+                "rapports/nouveau.html",
+                secteurs=secteurs,
+                erreur=(
+                    "Le secteur, la machine, le problème, "
+                    "les travaux et le technicien sont obligatoires."
+                )
+            ),
+            400
+        )
+
+    with transaction_db() as conn:
         cursor = conn.execute("""
-            INSERT INTO rapports_intervention
-            (secteur_id, machine, probleme, travaux, technicien, commentaire, reference)
+            INSERT INTO rapports_intervention (
+                secteur_id,
+                machine,
+                probleme,
+                travaux,
+                technicien,
+                commentaire,
+                reference
+            )
             VALUES (?, ?, ?, ?, ?, ?, ?)
         """, (
             secteur_id,
@@ -40,26 +134,24 @@ def nouveau_rapport():
 
         rapport_id = cursor.lastrowid
 
-        photo = request.files.get("photo")
+        enregistrer_photo(
+            conn,
+            "rapport",
+            rapport_id,
+            request.files.get("photo")
+        )
 
-        if photo and photo.filename:
-            filename = secure_filename(photo.filename)
-            photo_path = os.path.join(current_app.config["UPLOAD_FOLDER"], filename)
-            photo.save(photo_path)
+    return redirect(
+        url_for(
+            "rapports.detail_rapport",
+            rapport_id=rapport_id
+        )
+    )
 
-            conn.execute("""
-                INSERT INTO photos (type_element, element_id, nom_fichier)
-                VALUES (?, ?, ?)
-            """, ("rapport", rapport_id, filename))
 
-        conn.commit()
-        conn.close()
-
-        return redirect(url_for("rapports.liste_rapports"))
-
-    conn.close()
-    return render_template("rapports/nouveau.html", secteurs=secteurs)
-
+# -------------------------------------------------------------------
+# Liste, recherche, filtres et tri
+# -------------------------------------------------------------------
 
 @rapports_bp.route("/rapports")
 def liste_rapports():
@@ -67,14 +159,14 @@ def liste_rapports():
     secteur_id = request.args.get("secteur_id", "").strip()
     tri = request.args.get("tri", "recent").strip()
 
-    conn = get_db_connection()
-
     query = """
-        SELECT rapports_intervention.*,
-               secteurs.nom AS secteur_nom
+        SELECT
+            rapports_intervention.*,
+            secteurs.nom AS secteur_nom
         FROM rapports_intervention
-        LEFT JOIN secteurs ON rapports_intervention.secteur_id = secteurs.id
-        WHERE 1=1
+        LEFT JOIN secteurs
+            ON rapports_intervention.secteur_id = secteurs.id
+        WHERE 1 = 1
     """
 
     params = []
@@ -82,39 +174,46 @@ def liste_rapports():
     if recherche:
         query += """
             AND (
-                rapports_intervention.machine LIKE ?
-                OR rapports_intervention.probleme LIKE ?
-                OR rapports_intervention.travaux LIKE ?
-                OR rapports_intervention.technicien LIKE ?
-                OR rapports_intervention.commentaire LIKE ?
-                OR rapports_intervention.reference LIKE ?
-                OR secteurs.nom LIKE ?
+                LOWER(rapports_intervention.machine) LIKE LOWER(?)
+                OR LOWER(rapports_intervention.probleme) LIKE LOWER(?)
+                OR LOWER(rapports_intervention.travaux) LIKE LOWER(?)
+                OR LOWER(rapports_intervention.technicien) LIKE LOWER(?)
+                OR LOWER(COALESCE(rapports_intervention.commentaire, '')) LIKE LOWER(?)
+                OR LOWER(COALESCE(rapports_intervention.reference, '')) LIKE LOWER(?)
+                OR LOWER(COALESCE(secteurs.nom, '')) LIKE LOWER(?)
             )
         """
+
         recherche_sql = f"%{recherche}%"
         params.extend([recherche_sql] * 7)
 
     if secteur_id:
-        query += " AND rapports_intervention.secteur_id = ?"
+        query += """
+            AND rapports_intervention.secteur_id = ?
+        """
         params.append(secteur_id)
 
-    if tri == "ancien":
-        query += " ORDER BY rapports_intervention.date_rapport ASC"
-    elif tri == "secteur":
-        query += " ORDER BY secteurs.nom ASC"
-    elif tri == "technicien":
-        query += " ORDER BY rapports_intervention.technicien ASC"
-    else:
-        query += " ORDER BY rapports_intervention.date_rapport DESC"
+    order_by_options = {
+        "ancien": "rapports_intervention.date_rapport ASC",
+        "secteur": "secteurs.nom ASC",
+        "technicien": "rapports_intervention.technicien ASC",
+        "recent": "rapports_intervention.date_rapport DESC",
+    }
 
-    rapports = conn.execute(query, params).fetchall()
+    order_by = order_by_options.get(
+        tri,
+        order_by_options["recent"]
+    )
 
-    secteurs = conn.execute("""
-        SELECT * FROM secteurs
-        ORDER BY nom
-    """).fetchall()
+    query += f" ORDER BY {order_by}"
 
-    conn.close()
+    with connexion_db() as conn:
+        rapports = conn.execute(
+            query,
+            params
+        ).fetchall()
+
+        secteurs = get_all_secteurs(conn)
 
     return render_template(
         "rapports/liste.html",
@@ -125,32 +224,27 @@ def liste_rapports():
         tri=tri
     )
 
+
+# -------------------------------------------------------------------
+# Détail d'un rapport
+# -------------------------------------------------------------------
+
 @rapports_bp.route("/rapports/<int:rapport_id>")
 def detail_rapport(rapport_id):
+    with connexion_db() as conn:
+        rapport = get_rapport_detail(
+            conn,
+            rapport_id
+        )
 
-    conn = get_db_connection()
+        if rapport is None:
+            abort(404)
 
-    rapport = conn.execute("""
-        SELECT rapports_intervention.*,
-               secteurs.nom AS secteur_nom
-        FROM rapports_intervention
-        LEFT JOIN secteurs
-        ON rapports_intervention.secteur_id = secteurs.id
-        WHERE rapports_intervention.id = ?
-    """, (rapport_id,)).fetchone()
-
-    if rapport is None:
-        conn.close()
-        return "Rapport introuvable", 404
-
-    photos = conn.execute("""
-        SELECT *
-        FROM photos
-        WHERE type_element='rapport'
-        AND element_id=?
-    """, (rapport_id,)).fetchall()
-
-    conn.close()
+        photos = recuperer_photos(
+            conn,
+            "rapport",
+            rapport_id
+        )
 
     return render_template(
         "rapports/detail.html",
@@ -158,36 +252,78 @@ def detail_rapport(rapport_id):
         photos=photos
     )
 
-@rapports_bp.route("/rapports/<int:rapport_id>/modifier", methods=["GET", "POST"])
+
+# -------------------------------------------------------------------
+# Modification d'un rapport
+# -------------------------------------------------------------------
+
+@rapports_bp.route(
+    "/rapports/<int:rapport_id>/modifier",
+    methods=["GET", "POST"]
+)
 def modifier_rapport(rapport_id):
-    conn = get_db_connection()
+    if request.method == "GET":
+        with connexion_db() as conn:
+            rapport = get_rapport(
+                conn,
+                rapport_id
+            )
 
-    rapport = conn.execute("""
-        SELECT * FROM rapports_intervention
-        WHERE id = ?
-    """, (rapport_id,)).fetchone()
+            if rapport is None:
+                abort(404)
 
-    if rapport is None:
-        conn.close()
-        return "Rapport introuvable", 404
+            secteurs = get_all_secteurs(conn)
 
-    secteurs = conn.execute("""
-        SELECT * FROM secteurs
-        ORDER BY nom
-    """).fetchall()
+        return render_template(
+            "rapports/modifier.html",
+            rapport=rapport,
+            secteurs=secteurs
+        )
 
-    if request.method == "POST":
-        secteur_id = request.form["secteur_id"]
-        machine = request.form["machine"]
-        probleme = request.form["probleme"]
-        travaux = request.form["travaux"]
-        technicien = request.form["technicien"]
-        commentaire = request.form["commentaire"]
-        reference = request.form["reference"]
+    secteur_id = request.form.get("secteur_id", "").strip()
+    machine = request.form.get("machine", "").strip()
+    probleme = request.form.get("probleme", "").strip()
+    travaux = request.form.get("travaux", "").strip()
+    technicien = request.form.get("technicien", "").strip()
+    commentaire = request.form.get("commentaire", "").strip()
+    reference = request.form.get("reference", "").strip()
 
+    with connexion_db() as conn:
+        rapport = get_rapport(
+            conn,
+            rapport_id
+        )
+
+        if rapport is None:
+            abort(404)
+
+        secteurs = get_all_secteurs(conn)
+
+    if not all([
+        secteur_id,
+        machine,
+        probleme,
+        travaux,
+        technicien
+    ]):
+        return (
+            render_template(
+                "rapports/modifier.html",
+                rapport=rapport,
+                secteurs=secteurs,
+                erreur=(
+                    "Le secteur, la machine, le problème, "
+                    "les travaux et le technicien sont obligatoires."
+                )
+            ),
+            400
+        )
+
+    with transaction_db() as conn:
         conn.execute("""
             UPDATE rapports_intervention
-            SET secteur_id = ?,
+            SET
+                secteur_id = ?,
                 machine = ?,
                 probleme = ?,
                 travaux = ?,
@@ -206,67 +342,50 @@ def modifier_rapport(rapport_id):
             rapport_id
         ))
 
-        photo = request.files.get("photo")
-
-        if photo and photo.filename:
-            filename = secure_filename(photo.filename)
-            photo_path = os.path.join(current_app.config["UPLOAD_FOLDER"], filename)
-            photo.save(photo_path)
-
-            conn.execute("""
-                INSERT INTO photos (type_element, element_id, nom_fichier)
-                VALUES (?, ?, ?)
-            """, ("rapport", rapport_id, filename))
-
-        conn.commit()
-        conn.close()
-
-        return redirect(url_for("rapports.detail_rapport", rapport_id=rapport_id))
-
-    conn.close()
-
-    return render_template(
-        "rapports/modifier.html",
-        rapport=rapport,
-        secteurs=secteurs
-    )
-
-@rapports_bp.route("/rapports/<int:rapport_id>/supprimer", methods=["POST"])
-def supprimer_rapport(rapport_id):
-    conn = get_db_connection()
-
-    # Récupération de la photo associée
-    photo = conn.execute("""
-        SELECT nom_fichier
-        FROM photos
-        WHERE type_element = 'rapport'
-        AND element_id = ?
-    """, (rapport_id,)).fetchone()
-
-    # Suppression du fichier photo
-    if photo:
-        chemin = os.path.join(
-            current_app.config["UPLOAD_FOLDER"],
-            photo["nom_fichier"]
+        enregistrer_photo(
+            conn,
+            "rapport",
+            rapport_id,
+            request.files.get("photo")
         )
 
-        if os.path.exists(chemin):
-            os.remove(chemin)
+    return redirect(
+        url_for(
+            "rapports.detail_rapport",
+            rapport_id=rapport_id
+        )
+    )
 
-    # Suppression de la référence photo
-    conn.execute("""
-        DELETE FROM photos
-        WHERE type_element = 'rapport'
-        AND element_id = ?
-    """, (rapport_id,))
 
-    # Suppression du rapport
-    conn.execute("""
-        DELETE FROM rapports_intervention
-        WHERE id = ?
-    """, (rapport_id,))
+# -------------------------------------------------------------------
+# Suppression d'un rapport
+# -------------------------------------------------------------------
 
-    conn.commit()
-    conn.close()
+@rapports_bp.route(
+    "/rapports/<int:rapport_id>/supprimer",
+    methods=["POST"]
+)
+def supprimer_rapport(rapport_id):
+    with transaction_db() as conn:
+        rapport = get_rapport(
+            conn,
+            rapport_id
+        )
 
-    return redirect(url_for("rapports.liste_rapports"))
+        if rapport is None:
+            abort(404)
+
+        supprimer_photos(
+            conn,
+            "rapport",
+            rapport_id
+        )
+
+        conn.execute("""
+            DELETE FROM rapports_intervention
+            WHERE id = ?
+        """, (rapport_id,))
+
+    return redirect(
+        url_for("rapports.liste_rapports")
+    )

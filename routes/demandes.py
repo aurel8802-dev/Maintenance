@@ -1,46 +1,173 @@
-from flask import Blueprint, render_template, request, redirect, url_for, current_app
-from database import get_db_connection
-import os
-from werkzeug.utils import secure_filename
 from datetime import datetime
+
+from flask import (
+    Blueprint,
+    abort,
+    redirect,
+    render_template,
+    request,
+    url_for,
+)
+
+from services.database_service import (
+    connexion_db,
+    transaction_db,
+)
+from services.photo_service import (
+    enregistrer_photo,
+    recuperer_photos,
+    supprimer_photos,
+)
+
 
 demandes_bp = Blueprint("demandes", __name__)
 
 
+# -------------------------------------------------------------------
+# Requêtes communes
+# -------------------------------------------------------------------
+
+DEMANDE_DETAIL_QUERY = """
+    SELECT
+        demandes_intervention.*,
+        demandeurs.nom AS demandeur_nom,
+        secteurs.nom AS secteur_nom
+    FROM demandes_intervention
+    LEFT JOIN demandeurs
+        ON demandes_intervention.demandeur_id = demandeurs.id
+    LEFT JOIN secteurs
+        ON demandes_intervention.secteur_id = secteurs.id
+    WHERE demandes_intervention.id = ?
+"""
+
+
+def get_demande_detail(conn, demande_id):
+    """Récupère une demande avec son demandeur et son secteur."""
+    return conn.execute(
+        DEMANDE_DETAIL_QUERY,
+        (demande_id,)
+    ).fetchone()
+
+
+def get_demande_simple(conn, demande_id):
+    """Récupère uniquement les données principales d'une demande."""
+    return conn.execute("""
+        SELECT *
+        FROM demandes_intervention
+        WHERE id = ?
+    """, (demande_id,)).fetchone()
+
+
+def get_all_secteurs(conn):
+    """Retourne la liste des secteurs par ordre alphabétique."""
+    return conn.execute("""
+        SELECT *
+        FROM secteurs
+        ORDER BY nom
+    """).fetchall()
+
+
+# -------------------------------------------------------------------
+# Demandeurs
+# -------------------------------------------------------------------
+
 def get_or_create_demandeur(conn, nom, secteur_id):
+    """
+    Retourne l'identifiant d'un demandeur existant ou le crée.
+
+    La recherche ignore les majuscules, minuscules et espaces inutiles.
+    """
     nom = nom.strip()
 
-    demandeur = conn.execute(
-        "SELECT id FROM demandeurs WHERE nom = ?",
-        (nom,)
-    ).fetchone()
+    demandeur = conn.execute("""
+        SELECT id
+        FROM demandeurs
+        WHERE LOWER(TRIM(nom)) = LOWER(TRIM(?))
+        LIMIT 1
+    """, (nom,)).fetchone()
 
     if demandeur:
         return demandeur["id"]
 
-    cursor = conn.execute(
-        "INSERT INTO demandeurs (nom, secteur_id) VALUES (?, ?)",
-        (nom, secteur_id)
-    )
+    cursor = conn.execute("""
+        INSERT INTO demandeurs (
+            nom,
+            secteur_id
+        )
+        VALUES (?, ?)
+    """, (
+        nom,
+        secteur_id
+    ))
 
     return cursor.lastrowid
 
 
-@demandes_bp.route("/demandes/nouvelle", methods=["GET", "POST"])
+# -------------------------------------------------------------------
+# Création
+# -------------------------------------------------------------------
+
+@demandes_bp.route(
+    "/demandes/nouvelle",
+    methods=["GET", "POST"]
+)
 def nouvelle_demande():
-    if request.method == "POST":
-        secteur_id = request.form["secteur_id"]
-        demandeur_nom = request.form["demandeur"]
-        nature_travaux = request.form["nature_travaux"]
-        description = request.form["description"]
+    if request.method == "GET":
+        with connexion_db() as conn:
+            secteurs = get_all_secteurs(conn)
 
-        conn = get_db_connection()
+        return render_template(
+            "demandes/nouvelle.html",
+            secteurs=secteurs
+        )
 
-        demandeur_id = get_or_create_demandeur(conn, demandeur_nom, secteur_id)
+    secteur_id = request.form.get("secteur_id", "").strip()
+    demandeur_nom = request.form.get("demandeur", "").strip()
+    nature_travaux = request.form.get(
+        "nature_travaux",
+        ""
+    ).strip()
+    description = request.form.get(
+        "description",
+        ""
+    ).strip()
+
+    if not all([
+        secteur_id,
+        demandeur_nom,
+        nature_travaux,
+        description
+    ]):
+        with connexion_db() as conn:
+            secteurs = get_all_secteurs(conn)
+
+        return (
+            render_template(
+                "demandes/nouvelle.html",
+                secteurs=secteurs,
+                erreur=(
+                    "Tous les champs obligatoires "
+                    "doivent être remplis."
+                )
+            ),
+            400
+        )
+
+    with transaction_db() as conn:
+        demandeur_id = get_or_create_demandeur(
+            conn,
+            demandeur_nom,
+            secteur_id
+        )
 
         cursor = conn.execute("""
-            INSERT INTO demandes_intervention
-            (secteur_id, demandeur_id, nature_travaux, description, statut)
+            INSERT INTO demandes_intervention (
+                secteur_id,
+                demandeur_id,
+                nature_travaux,
+                description,
+                statut
+            )
             VALUES (?, ?, ?, ?, ?)
         """, (
             secteur_id,
@@ -51,31 +178,25 @@ def nouvelle_demande():
         ))
 
         demande_id = cursor.lastrowid
-        photo = request.files.get("photo")
 
-        if photo and photo.filename:
-            filename = secure_filename(photo.filename)
-            photo_path = os.path.join(current_app.config["UPLOAD_FOLDER"], filename)
-            photo.save(photo_path)
+        enregistrer_photo(
+            conn,
+            "demande",
+            demande_id,
+            request.files.get("photo")
+        )
 
-            conn.execute("""
-                INSERT INTO photos (type_element, element_id, nom_fichier)
-                VALUES (?, ?, ?)
-            """, ("demande", demande_id, filename))
+    return redirect(
+        url_for(
+            "demandes.detail_demande",
+            demande_id=demande_id
+        )
+    )
 
-        conn.commit()
-        conn.close()
 
-        return redirect(url_for("index"))
-
-    conn = get_db_connection()
-    secteurs = conn.execute("""
-        SELECT * FROM secteurs
-        ORDER BY nom
-    """).fetchall()
-    conn.close()
-
-    return render_template("demandes/nouvelle.html", secteurs=secteurs)
+# -------------------------------------------------------------------
+# Liste, recherche, filtres et tri
+# -------------------------------------------------------------------
 
 @demandes_bp.route("/demandes")
 def liste_demandes():
@@ -84,16 +205,17 @@ def liste_demandes():
     statut = request.args.get("statut", "").strip()
     tri = request.args.get("tri", "recent").strip()
 
-    conn = get_db_connection()
-
     query = """
-        SELECT demandes_intervention.*,
-               demandeurs.nom AS demandeur_nom,
-               secteurs.nom AS secteur_nom
+        SELECT
+            demandes_intervention.*,
+            demandeurs.nom AS demandeur_nom,
+            secteurs.nom AS secteur_nom
         FROM demandes_intervention
-        LEFT JOIN demandeurs ON demandes_intervention.demandeur_id = demandeurs.id
-        LEFT JOIN secteurs ON demandes_intervention.secteur_id = secteurs.id
-        WHERE 1=1
+        LEFT JOIN demandeurs
+            ON demandes_intervention.demandeur_id = demandeurs.id
+        LEFT JOIN secteurs
+            ON demandes_intervention.secteur_id = secteurs.id
+        WHERE 1 = 1
     """
 
     params = []
@@ -101,40 +223,57 @@ def liste_demandes():
     if recherche:
         query += """
             AND (
-                demandes_intervention.nature_travaux LIKE ?
-                OR demandes_intervention.description LIKE ?
-                OR demandeurs.nom LIKE ?
-                OR secteurs.nom LIKE ?
+                LOWER(
+                    demandes_intervention.nature_travaux
+                ) LIKE LOWER(?)
+                OR LOWER(
+                    demandes_intervention.description
+                ) LIKE LOWER(?)
+                OR LOWER(
+                    COALESCE(demandeurs.nom, '')
+                ) LIKE LOWER(?)
+                OR LOWER(
+                    COALESCE(secteurs.nom, '')
+                ) LIKE LOWER(?)
             )
         """
+
         recherche_sql = f"%{recherche}%"
-        params.extend([recherche_sql, recherche_sql, recherche_sql, recherche_sql])
+        params.extend([recherche_sql] * 4)
 
     if secteur_id:
-        query += " AND demandes_intervention.secteur_id = ?"
+        query += """
+            AND demandes_intervention.secteur_id = ?
+        """
         params.append(secteur_id)
 
     if statut:
-        query += " AND demandes_intervention.statut = ?"
+        query += """
+            AND demandes_intervention.statut = ?
+        """
         params.append(statut)
 
-    if tri == "ancien":
-        query += " ORDER BY demandes_intervention.date_creation ASC"
-    elif tri == "secteur":
-        query += " ORDER BY secteurs.nom ASC"
-    elif tri == "statut":
-        query += " ORDER BY demandes_intervention.statut ASC"
-    else:
-        query += " ORDER BY demandes_intervention.date_creation DESC"
+    order_by_options = {
+        "ancien": "demandes_intervention.date_creation ASC",
+        "secteur": "secteurs.nom ASC",
+        "statut": "demandes_intervention.statut ASC",
+        "recent": "demandes_intervention.date_creation DESC",
+    }
 
-    demandes = conn.execute(query, params).fetchall()
+    order_by = order_by_options.get(
+        tri,
+        order_by_options["recent"]
+    )
 
-    secteurs = conn.execute("""
-        SELECT * FROM secteurs
-        ORDER BY nom
-    """).fetchall()
+    query += f" ORDER BY {order_by}"
 
-    conn.close()
+    with connexion_db() as conn:
+        demandes = conn.execute(
+            query,
+            params
+        ).fetchall()
+
+        secteurs = get_all_secteurs(conn)
 
     return render_template(
         "demandes/liste.html",
@@ -146,66 +285,128 @@ def liste_demandes():
         tri=tri
     )
 
+
+# -------------------------------------------------------------------
+# Détail
+# -------------------------------------------------------------------
+
 @demandes_bp.route("/demandes/<int:demande_id>")
 def detail_demande(demande_id):
-    conn = get_db_connection()
+    with connexion_db() as conn:
+        demande = get_demande_detail(
+            conn,
+            demande_id
+        )
 
-    demande = conn.execute("""
-        SELECT demandes_intervention.*,
-               demandeurs.nom AS demandeur_nom,
-               secteurs.nom AS secteur_nom
-        FROM demandes_intervention
-        LEFT JOIN demandeurs ON demandes_intervention.demandeur_id = demandeurs.id
-        LEFT JOIN secteurs ON demandes_intervention.secteur_id = secteurs.id
-        WHERE demandes_intervention.id = ?
-    """, (demande_id,)).fetchone()
+        if demande is None:
+            abort(404)
 
-    photos = conn.execute("""
-        SELECT * FROM photos
-        WHERE type_element = ? AND element_id = ?
-        ORDER BY date_ajout DESC
-    """, ("demande", demande_id)).fetchall()
-
-    conn.close()
-
-    if demande is None:
-        return "Demande introuvable", 404
+        photos = recuperer_photos(
+            conn,
+            "demande",
+            demande_id
+        )
 
     return render_template(
-    "demandes/detail.html",
-    demande=demande,
-    photos=photos
+        "demandes/detail.html",
+        demande=demande,
+        photos=photos
+    )
+
+
+# -------------------------------------------------------------------
+# Modification
+# -------------------------------------------------------------------
+
+@demandes_bp.route(
+    "/demandes/<int:demande_id>/modifier",
+    methods=["GET", "POST"]
 )
-
-@demandes_bp.route("/demandes/<int:demande_id>/modifier", methods=["GET", "POST"])
 def modifier_demande(demande_id):
-    conn = get_db_connection()
+    if request.method == "GET":
+        with connexion_db() as conn:
+            demande = get_demande_simple(
+                conn,
+                demande_id
+            )
 
-    demande = conn.execute("""
-        SELECT * FROM demandes_intervention
-        WHERE id = ?
-    """, (demande_id,)).fetchone()
+            if demande is None:
+                abort(404)
 
-    if demande is None:
-        conn.close()
-        return "Demande introuvable", 404
+            secteurs = get_all_secteurs(conn)
 
-    secteurs = conn.execute("""
-        SELECT * FROM secteurs
-        ORDER BY nom
-    """).fetchall()
+            demandeur = conn.execute("""
+                SELECT nom
+                FROM demandeurs
+                WHERE id = ?
+            """, (
+                demande["demandeur_id"],
+            )).fetchone()
 
-    if request.method == "POST":
-        secteur_id = request.form["secteur_id"]
-        demandeur_nom = request.form["demandeur"]
-        nature_travaux = request.form["nature_travaux"]
-        description = request.form["description"]
+        return render_template(
+            "demandes/modifier.html",
+            demande=demande,
+            demandeur=demandeur,
+            secteurs=secteurs
+        )
 
-        demandeur_id = get_or_create_demandeur(conn, demandeur_nom, secteur_id)
+    secteur_id = request.form.get("secteur_id", "").strip()
+    demandeur_nom = request.form.get("demandeur", "").strip()
+    nature_travaux = request.form.get(
+        "nature_travaux",
+        ""
+    ).strip()
+    description = request.form.get(
+        "description",
+        ""
+    ).strip()
+
+    with connexion_db() as conn:
+        demande = get_demande_simple(
+            conn,
+            demande_id
+        )
+
+        if demande is None:
+            abort(404)
+
+        secteurs = get_all_secteurs(conn)
+
+    if not all([
+        secteur_id,
+        demandeur_nom,
+        nature_travaux,
+        description
+    ]):
+        demandeur = {
+            "nom": demandeur_nom
+        }
+
+        return (
+            render_template(
+                "demandes/modifier.html",
+                demande=demande,
+                demandeur=demandeur,
+                secteurs=secteurs,
+                erreur=(
+                    "Tous les champs obligatoires "
+                    "doivent être remplis."
+                )
+            ),
+            400
+        )
+
+    with transaction_db() as conn:
+        demandeur_id = get_or_create_demandeur(
+            conn,
+            demandeur_nom,
+            secteur_id
+        )
 
         conn.execute("""
             UPDATE demandes_intervention
-            SET secteur_id = ?,
+            SET
+                secteur_id = ?,
                 demandeur_id = ?,
                 nature_travaux = ?,
                 description = ?
@@ -218,96 +419,154 @@ def modifier_demande(demande_id):
             demande_id
         ))
 
-        photo = request.files.get("photo")
+        enregistrer_photo(
+            conn,
+            "demande",
+            demande_id,
+            request.files.get("photo")
+        )
 
-        if photo and photo.filename:
-            filename = secure_filename(photo.filename)
-            photo_path = os.path.join(current_app.config["UPLOAD_FOLDER"], filename)
-            photo.save(photo_path)
-
-            conn.execute("""
-        INSERT INTO photos (type_element, element_id, nom_fichier)
-        VALUES (?, ?, ?)
-    """, ("demande", demande_id, filename))
-
-        conn.commit()
-        conn.close()
-
-        return redirect(url_for("demandes.detail_demande", demande_id=demande_id))
-
-    demandeur = conn.execute("""
-        SELECT nom FROM demandeurs
-        WHERE id = ?
-    """, (demande["demandeur_id"],)).fetchone()
-
-    conn.close()
-
-    return render_template(
-        "demandes/modifier.html",
-        demande=demande,
-        demandeur=demandeur,
-        secteurs=secteurs
+    return redirect(
+        url_for(
+            "demandes.detail_demande",
+            demande_id=demande_id
+        )
     )
 
-@demandes_bp.route("/demandes/<int:demande_id>/supprimer", methods=["GET", "POST"])
+
+# -------------------------------------------------------------------
+# Suppression
+# -------------------------------------------------------------------
+
+@demandes_bp.route(
+    "/demandes/<int:demande_id>/supprimer",
+    methods=["GET", "POST"]
+)
 def supprimer_demande(demande_id):
-    conn = get_db_connection()
+    if request.method == "GET":
+        with connexion_db() as conn:
+            demande = get_demande_detail(
+                conn,
+                demande_id
+            )
 
-    demande = conn.execute("""
-        SELECT demandes_intervention.*,
-               demandeurs.nom AS demandeur_nom,
-               secteurs.nom AS secteur_nom
-        FROM demandes_intervention
-        LEFT JOIN demandeurs ON demandes_intervention.demandeur_id = demandeurs.id
-        LEFT JOIN secteurs ON demandes_intervention.secteur_id = secteurs.id
-        WHERE demandes_intervention.id = ?
-    """, (demande_id,)).fetchone()
+            if demande is None:
+                abort(404)
 
-    if demande is None:
-        conn.close()
-        return "Demande introuvable", 404
+        return render_template(
+            "demandes/supprimer.html",
+            demande=demande
+        )
 
-    if request.method == "POST":
+    with transaction_db() as conn:
+        demande = get_demande_detail(
+            conn,
+            demande_id
+        )
+
+        if demande is None:
+            abort(404)
+
+        supprimer_photos(
+            conn,
+            "demande",
+            demande_id
+        )
+
         conn.execute("""
             DELETE FROM demandes_intervention
             WHERE id = ?
-        """, (demande_id,))
+        """, (
+            demande_id,
+        ))
 
-        conn.commit()
-        conn.close()
+    return redirect(
+        url_for("demandes.liste_demandes")
+    )
 
-        return redirect(url_for("demandes.liste_demandes"))
 
-    conn.close()
+# -------------------------------------------------------------------
+# Clôture
+# -------------------------------------------------------------------
 
-    return render_template("demandes/supprimer.html", demande=demande)
-
-@demandes_bp.route("/demandes/<int:demande_id>/solder", methods=["GET", "POST"])
+@demandes_bp.route(
+    "/demandes/<int:demande_id>/solder",
+    methods=["GET", "POST"]
+)
 def solder_demande(demande_id):
-    conn = get_db_connection()
+    if request.method == "GET":
+        with connexion_db() as conn:
+            demande = get_demande_detail(
+                conn,
+                demande_id
+            )
 
-    demande = conn.execute("""
-        SELECT demandes_intervention.*,
-               demandeurs.nom AS demandeur_nom,
-               secteurs.nom AS secteur_nom
-        FROM demandes_intervention
-        LEFT JOIN demandeurs ON demandes_intervention.demandeur_id = demandeurs.id
-        LEFT JOIN secteurs ON demandes_intervention.secteur_id = secteurs.id
-        WHERE demandes_intervention.id = ?
-    """, (demande_id,)).fetchone()
+            if demande is None:
+                abort(404)
 
-    if demande is None:
-        conn.close()
-        return "Demande introuvable", 404
+        if demande["statut"] == "Soldé":
+            return redirect(
+                url_for(
+                    "demandes.detail_demande",
+                    demande_id=demande_id
+                )
+            )
 
-    if request.method == "POST":
-        solde_par = request.form["solde_par"]
-        reference_piece = request.form["reference_piece"]
-        commentaire_solde = request.form["commentaire_solde"]
+        return render_template(
+            "demandes/solder.html",
+            demande=demande
+        )
 
+    solde_par = request.form.get(
+        "solde_par",
+        ""
+    ).strip()
+
+    reference_piece = request.form.get(
+        "reference_piece",
+        ""
+    ).strip()
+
+    commentaire_solde = request.form.get(
+        "commentaire_solde",
+        ""
+    ).strip()
+
+    with connexion_db() as conn:
+        demande = get_demande_detail(
+            conn,
+            demande_id
+        )
+
+        if demande is None:
+            abort(404)
+
+    if demande["statut"] == "Soldé":
+        return redirect(
+            url_for(
+                "demandes.detail_demande",
+                demande_id=demande_id
+            )
+        )
+
+    if not solde_par:
+        return (
+            render_template(
+                "demandes/solder.html",
+                demande=demande,
+                erreur=(
+                    "Le nom de la personne ayant soldé "
+                    "la demande est obligatoire."
+                )
+            ),
+            400
+        )
+
+    with transaction_db() as conn:
         conn.execute("""
             UPDATE demandes_intervention
-            SET statut = ?,
+            SET
+                statut = ?,
                 date_solde = ?,
                 solde_par = ?,
                 reference_piece = ?,
@@ -315,18 +574,16 @@ def solder_demande(demande_id):
             WHERE id = ?
         """, (
             "Soldé",
-            datetime.now().isoformat(timespec="seconds"),
+            datetime.now(),
             solde_par,
             reference_piece,
             commentaire_solde,
             demande_id
         ))
 
-        conn.commit()
-        conn.close()
-
-        return redirect(url_for("demandes.detail_demande", demande_id=demande_id))
-
-    conn.close()
-
-    return render_template("demandes/solder.html", demande=demande)
+    return redirect(
+        url_for(
+            "demandes.detail_demande",
+            demande_id=demande_id
+        )
+    )
