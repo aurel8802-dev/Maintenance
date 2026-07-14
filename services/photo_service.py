@@ -36,6 +36,12 @@ def enregistrer_photo(conn, type_element, element_id, photo):
     if not photo or not photo.filename:
         return None
 
+    print(
+        "Cloudinary configuré sur le serveur :",
+        cloudinary_configured(),
+        flush=True
+    )
+
     if cloudinary_configured():
         resultat = cloudinary.uploader.upload(
             photo,
