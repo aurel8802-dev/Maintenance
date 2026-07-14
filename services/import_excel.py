@@ -21,8 +21,12 @@ SOLDE_VALUES = {
 
 SECTEUR_CORRESPONDANCES = {
     "axame": "Axame",
+    "batiment": "Bâtiments",
+    "bâtiment": "Bâtiments",
     "batiments": "Bâtiments",
     "bâtiments": "Bâtiments",
+    "batiement": "Bâtiments",
+    "batiements": "Bâtiments",
     "extérieur": "Extérieur",
     "exterieur": "Extérieur",
     "hall 1": "Hall 1",
