@@ -33,8 +33,34 @@
         <label>Travaux réalisés</label>
         <textarea name="travaux" rows="4" required>{{ rapport.travaux }}</textarea>
 
-        <label>Nom du technicien</label>
-        <input type="text" name="technicien" value="{{ rapport.technicien }}" required>
+        <div class="autocomplete-field">
+            <label for="technicien">Nom du technicien</label>
+
+            <input
+                type="text"
+                id="technicien"
+                name="technicien"
+                value="{{ rapport.technicien }}"
+                placeholder="Rechercher ou saisir un technicien"
+                autocomplete="off"
+                required
+            >
+
+            <div
+                id="technicienSuggestions"
+                class="autocomplete-suggestions"
+            >
+                {% for technicien in techniciens %}
+                    <button
+                        type="button"
+                        class="autocomplete-option"
+                        data-value="{{ technicien }}"
+                    >
+                        {{ technicien }}
+                    </button>
+                {% endfor %}
+            </div>
+        </div>
 
         <label>Commentaire</label>
         <textarea name="commentaire" rows="4">{{ rapport.commentaire }}</textarea>
@@ -84,5 +110,34 @@ function updateFileName(input) {
     }
 }
 </script>
+
+<div class="autocomplete-field">
+    <label for="technicien">Nom du technicien</label>
+
+    <input
+        type="text"
+        id="technicien"
+        name="technicien"
+        value="{{ rapport.technicien }}"
+        placeholder="Rechercher ou saisir un technicien"
+        autocomplete="off"
+        required
+    >
+
+    <div
+        id="technicienSuggestions"
+        class="autocomplete-suggestions"
+    >
+        {% for technicien in techniciens %}
+            <button
+                type="button"
+                class="autocomplete-option"
+                data-value="{{ technicien }}"
+            >
+                {{ technicien }}
+            </button>
+        {% endfor %}
+    </div>
+</div>
 
 {% endblock %}

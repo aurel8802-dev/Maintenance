@@ -69,15 +69,18 @@
                         <tr>
                             <td>{{ secteur.nom }}</td>
                             <td>
-                                <form
-                                    method="POST"
-                                    action="/parametres/secteurs/{{ secteur.id }}/supprimer"
-                                    onsubmit="return confirm('Supprimer ce secteur ?');"
+                                <button
+                                    type="button"
+                                    class="btn-danger"
+                                    data-confirm-delete
+                                    data-url="{{ url_for(
+                                        'parametres.supprimer_secteur',
+                                        secteur_id=secteur.id
+                                    ) }}"
+                                    data-name="{{ secteur.nom }}"
                                 >
-                                    <button type="submit" class="btn-danger">
-                                        🗑️ Supprimer
-                                    </button>
-                                </form>
+                                    🗑️ Supprimer
+                                </button>
                             </td>
                         </tr>
                     {% endfor %}

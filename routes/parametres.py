@@ -12,6 +12,11 @@ from flask import (
 
 from config import ADMIN_RESET_CODE
 from database import get_db_connection
+from services.database_service import (
+    connexion_db,
+    transaction_db,
+)
+
 from services.export_excel import (
     EXCEL_MIME_TYPE,
     generer_export_excel,
@@ -21,7 +26,6 @@ from services.secteur_service import (
     nettoyer_secteurs_base,
     normaliser_nom_secteur,
 )
-
 
 parametres_bp = Blueprint("parametres", __name__)
 
@@ -341,4 +345,70 @@ def exporter_donnees():
         as_attachment=True,
         download_name=nom_fichier,
         mimetype=EXCEL_MIME_TYPE
+    )
+
+@parametres_bp.route(
+    "/parametres/techniciens",
+    methods=["GET", "POST"]
+)
+def gerer_techniciens():
+    message = None
+    erreur = None
+
+    if request.method == "POST":
+        nom = request.form.get("nom", "").strip()
+
+        if not nom:
+            erreur = "Le nom du technicien est obligatoire."
+        else:
+            try:
+                with transaction_db() as conn:
+                    technicien_existant = conn.execute("""
+                        SELECT id
+                        FROM techniciens
+                        WHERE LOWER(TRIM(nom)) = LOWER(TRIM(?))
+                        LIMIT 1
+                    """, (nom,)).fetchone()
+
+                    if technicien_existant:
+                        erreur = "Ce technicien existe déjà."
+                    else:
+                        conn.execute("""
+                            INSERT INTO techniciens (nom)
+                            VALUES (?)
+                        """, (nom,))
+
+                        message = "Technicien ajouté."
+
+            except Exception as error:
+                erreur = f"Erreur : {error}"
+
+    with connexion_db() as conn:
+        techniciens = conn.execute("""
+            SELECT *
+            FROM techniciens
+            ORDER BY nom
+        """).fetchall()
+
+    return render_template(
+        "parametres/techniciens.html",
+        techniciens=techniciens,
+        message=message,
+        erreur=erreur
+    )
+
+
+@parametres_bp.route(
+    "/parametres/techniciens/<int:technicien_id>/supprimer",
+    methods=["POST"]
+)
+def supprimer_technicien(technicien_id):
+    with transaction_db() as conn:
+        conn.execute("""
+            DELETE FROM techniciens
+            WHERE id = ?
+        """, (technicien_id,))
+
+    return redirect(
+        url_for("parametres.gerer_techniciens")
     )

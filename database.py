@@ -187,6 +187,12 @@ def create_postgres_tables(cursor):
         )
     """)
 
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS techniciens (
+            id SERIAL PRIMARY KEY,
+            nom TEXT NOT NULL UNIQUE
+        )
+    """)
 
 # -------------------------------------------------------------------
 # Création des tables SQLite
@@ -254,6 +260,12 @@ def create_sqlite_tables(cursor):
             url_photo TEXT,
             public_id TEXT,
             date_ajout TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+    """)
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS techniciens (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            nom TEXT NOT NULL UNIQUE
         )
     """)
 

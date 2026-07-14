@@ -1,0 +1,91 @@
+{% extends "base.html" %}
+
+{% block content %}
+
+<section class="card">
+    <div class="section-header">
+        <div>
+            <h2>👷 Techniciens</h2>
+            <p>Gestion des techniciens proposés dans les rapports.</p>
+        </div>
+
+        <a href="/parametres" class="btn-secondary">
+            ← Retour
+        </a>
+    </div>
+
+    {% if erreur %}
+        <p class="warning-text">{{ erreur }}</p>
+    {% endif %}
+
+    {% if message %}
+        <p class="success-text">{{ message }}</p>
+    {% endif %}
+
+    <form method="POST" class="form">
+        <label>Nouveau technicien</label>
+
+        <input
+            type="text"
+            name="nom"
+            placeholder="Ex : Jean Dupont"
+            required
+        >
+
+        <button type="submit" class="btn">
+            Ajouter le technicien
+        </button>
+    </form>
+
+    <hr>
+
+    <h3>Techniciens existants</h3>
+
+    {% if techniciens %}
+        <div class="table-container">
+            <table class="modern-table">
+                <thead>
+                    <tr>
+                        <th>Nom</th>
+                        <th style="width: 140px;">Actions</th>
+                    </tr>
+                </thead>
+
+                <tbody>
+                    {% for technicien in techniciens %}
+                        <tr>
+                            <td>{{ technicien.nom }}</td>
+
+                            <td>
+                                <form
+                                    method="POST"
+                                    action="{{ url_for(
+                                        'parametres.supprimer_technicien',
+                                        technicien_id=technicien.id
+                                    ) }}"
+                                >
+                                    <button
+                                        type="button"
+                                        class="btn-danger"
+                                        data-confirm-delete
+                                        data-url="{{ url_for(
+                                            'parametres.supprimer_technicien',
+                                            technicien_id=technicien.id
+                                        ) }}"
+                                        data-name="{{ technicien.nom }}"
+                                    >
+                                        🗑️ Supprimer
+                                    </button>
+                                </form>
+                            </td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    {% else %}
+        <p>Aucun technicien enregistré.</p>
+    {% endif %}
+</section>
+
+{% endblock %}

@@ -74,10 +74,12 @@ def nouveau_rapport():
     if request.method == "GET":
         with connexion_db() as conn:
             secteurs = get_all_secteurs(conn)
+            techniciens = get_all_techniciens(conn)
 
         return render_template(
             "rapports/nouveau.html",
-            secteurs=secteurs
+            secteurs=secteurs,
+            techniciens=techniciens
         )
 
     secteur_id = request.form.get("secteur_id", "").strip()
@@ -97,18 +99,20 @@ def nouveau_rapport():
     ]):
         with connexion_db() as conn:
             secteurs = get_all_secteurs(conn)
+            techniciens = get_all_techniciens(conn)
 
-        return (
-            render_template(
-                "rapports/nouveau.html",
-                secteurs=secteurs,
-                erreur=(
-                    "Le secteur, la machine, le problème, "
-                    "les travaux et le technicien sont obligatoires."
-                )
-            ),
-            400
-        )
+    return (
+        render_template(
+            "rapports/nouveau.html",
+            secteurs=secteurs,
+            techniciens=techniciens,
+            erreur=(
+                "Le secteur, la machine, le problème, "
+                "les travaux et le technicien sont obligatoires."
+            )
+        ),
+        400
+    )
 
     with transaction_db() as conn:
         cursor = conn.execute("""
@@ -148,7 +152,18 @@ def nouveau_rapport():
         )
     )
 
+def get_all_techniciens(conn):
+    """Retourne les techniciens enregistrés dans les paramètres."""
+    rows = conn.execute("""
+        SELECT nom
+        FROM techniciens
+        ORDER BY nom
+    """).fetchall()
 
+    return [
+        row["nom"]
+        for row in rows
+    ]
 # -------------------------------------------------------------------
 # Liste, recherche, filtres et tri
 # -------------------------------------------------------------------
@@ -264,20 +279,19 @@ def detail_rapport(rapport_id):
 def modifier_rapport(rapport_id):
     if request.method == "GET":
         with connexion_db() as conn:
-            rapport = get_rapport(
-                conn,
-                rapport_id
-            )
+            rapport = get_rapport(conn, rapport_id)
 
             if rapport is None:
                 abort(404)
 
             secteurs = get_all_secteurs(conn)
+            techniciens = get_all_techniciens(conn)
 
         return render_template(
             "rapports/modifier.html",
             rapport=rapport,
-            secteurs=secteurs
+            secteurs=secteurs,
+            techniciens=techniciens
         )
 
     secteur_id = request.form.get("secteur_id", "").strip()
@@ -289,15 +303,13 @@ def modifier_rapport(rapport_id):
     reference = request.form.get("reference", "").strip()
 
     with connexion_db() as conn:
-        rapport = get_rapport(
-            conn,
-            rapport_id
-        )
+        rapport = get_rapport(conn, rapport_id)
 
         if rapport is None:
             abort(404)
 
         secteurs = get_all_secteurs(conn)
+        techniciens = get_all_techniciens(conn)
 
     if not all([
         secteur_id,
@@ -311,6 +323,7 @@ def modifier_rapport(rapport_id):
                 "rapports/modifier.html",
                 rapport=rapport,
                 secteurs=secteurs,
+                techniciens=techniciens,
                 erreur=(
                     "Le secteur, la machine, le problème, "
                     "les travaux et le technicien sont obligatoires."

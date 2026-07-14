@@ -32,8 +32,33 @@
         <label>Travaux réalisés</label>
         <textarea name="travaux" rows="4" required></textarea>
 
-        <label>Nom du technicien</label>
-        <input type="text" name="technicien" required>
+        <div class="autocomplete-field">
+            <label for="technicien">Nom du technicien</label>
+
+            <input
+                type="text"
+                id="technicien"
+                name="technicien"
+                placeholder="Rechercher ou saisir un technicien"
+                autocomplete="off"
+                required
+            >
+
+            <div
+                id="technicienSuggestions"
+                class="autocomplete-suggestions"
+            >
+                {% for technicien in techniciens %}
+                    <button
+                        type="button"
+                        class="autocomplete-option"
+                        data-value="{{ technicien }}"
+                    >
+                        {{ technicien }}
+                    </button>
+                {% endfor %}
+            </div>
+        </div>
 
         <label>Commentaire</label>
         <textarea name="commentaire" rows="4"></textarea>
@@ -102,6 +127,54 @@ function updateFileName(input){
 
 }
 
+</script>
+
+<script>
+document.addEventListener("DOMContentLoaded", function () {
+    const input = document.getElementById("technicien");
+    const suggestions = document.getElementById("technicienSuggestions");
+    const options = suggestions.querySelectorAll(".autocomplete-option");
+
+    function filtrerTechniciens() {
+        const recherche = input.value.trim().toLowerCase();
+        let resultatVisible = false;
+
+        options.forEach(function (option) {
+            const nom = option.dataset.value.toLowerCase();
+            const visible = !recherche || nom.includes(recherche);
+
+            option.style.display = visible ? "block" : "none";
+
+            if (visible) {
+                resultatVisible = true;
+            }
+        });
+
+        suggestions.classList.toggle(
+            "is-visible",
+            resultatVisible
+        );
+    }
+
+    input.addEventListener("focus", filtrerTechniciens);
+    input.addEventListener("input", filtrerTechniciens);
+
+    options.forEach(function (option) {
+        option.addEventListener("click", function () {
+            input.value = option.dataset.value;
+            suggestions.classList.remove("is-visible");
+        });
+    });
+
+    document.addEventListener("click", function (event) {
+        if (
+            !input.contains(event.target)
+            && !suggestions.contains(event.target)
+        ) {
+            suggestions.classList.remove("is-visible");
+        }
+    });
+});
 </script>
 
 {% endblock %}
