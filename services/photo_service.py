@@ -27,22 +27,27 @@ def cloudinary_configured():
 
 
 def enregistrer_photo(conn, type_element, element_id, photo):
-    """
-    Envoie une photo vers Cloudinary et enregistre son URL en base.
-
-    En local, si Cloudinary n'est pas configuré, la photo est enregistrée
-    dans uploads/photos afin de conserver le fonctionnement précédent.
-    """
-    if not photo or not photo.filename:
-        return None
+    print("✅ Fonction enregistrer_photo appelée", flush=True)
 
     print(
-        "Cloudinary configuré sur le serveur :",
+        "Photo reçue :",
+        photo.filename if photo else "Aucune photo",
+        flush=True
+    )
+
+    print(
+        "Cloudinary configuré :",
         cloudinary_configured(),
         flush=True
     )
 
+    if not photo or not photo.filename:
+        print("❌ Aucune photo transmise par le formulaire", flush=True)
+        return None
+
     if cloudinary_configured():
+        print("☁️ Envoi de la photo vers Cloudinary", flush=True)
+
         resultat = cloudinary.uploader.upload(
             photo,
             folder=f"gm_interventions/{type_element}s",
@@ -51,7 +56,12 @@ def enregistrer_photo(conn, type_element, element_id, photo):
 
         url_photo = resultat.get("secure_url")
         public_id = resultat.get("public_id")
-        nom_fichier = resultat.get("original_filename") or photo.filename
+        nom_fichier = (
+            resultat.get("original_filename")
+            or photo.filename
+        )
+
+        print("✅ Photo envoyée :", url_photo, flush=True)
 
         try:
             conn.execute("""
@@ -80,6 +90,8 @@ def enregistrer_photo(conn, type_element, element_id, photo):
             raise
 
         return url_photo
+
+    print("⚠️ Cloudinary absent : stockage local utilisé", flush=True)
 
     return enregistrer_photo_locale(
         conn,
