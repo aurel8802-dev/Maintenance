@@ -101,18 +101,18 @@ def nouveau_rapport():
             secteurs = get_all_secteurs(conn)
             techniciens = get_all_techniciens(conn)
 
-    return (
-        render_template(
-            "rapports/nouveau.html",
-            secteurs=secteurs,
-            techniciens=techniciens,
-            erreur=(
-                "Le secteur, la machine, le problème, "
-                "les travaux et le technicien sont obligatoires."
-            )
-        ),
-        400
-    )
+        return (
+            render_template(
+                "rapports/nouveau.html",
+                secteurs=secteurs,
+                techniciens=techniciens,
+                erreur=(
+                    "Le secteur, la machine, le problème, "
+                    "les travaux et le technicien sont obligatoires."
+                )
+            ),
+            400
+        )
 
     with transaction_db() as conn:
         cursor = conn.execute("""
