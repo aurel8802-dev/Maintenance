@@ -508,31 +508,3 @@ def gerer_machines():
         message=message,
         erreur=erreur
     )
-
-@parametres_bp.route(
-    "/parametres/machines/<int:machine_id>/supprimer",
-    methods=["POST"]
-)
-def supprimer_machine(machine_id):
-    with transaction_db() as conn:
-        machine = conn.execute("""
-            SELECT id
-            FROM machines
-            WHERE id = ?
-        """, (machine_id,)).fetchone()
-
-        if machine is None:
-            return "Machine introuvable.", 404
-
-        conn.execute("""
-            UPDATE machines
-            SET actif = ?
-            WHERE id = ?
-        """, (
-            0,
-            machine_id
-        ))
-
-    return redirect(
-        url_for("parametres.gerer_machines")
-    )
