@@ -145,20 +145,38 @@ def gerer_secteurs():
 
             else:
                 secteur_existant = conn.execute("""
-                    SELECT id
+                    SELECT id, actif
                     FROM secteurs
                     WHERE LOWER(TRIM(nom)) = LOWER(TRIM(?))
                     LIMIT 1
                 """, (nom,)).fetchone()
 
                 if secteur_existant:
-                    erreur = "Ce secteur existe déjà."
+                    if secteur_existant["actif"]:
+                        erreur = "Ce secteur existe déjà."
+                    else:
+                        conn.execute("""
+                            UPDATE secteurs
+                            SET actif = ?
+                            WHERE id = ?
+                        """, (
+                            1,
+                            secteur_existant["id"]
+                        ))
 
+                        conn.commit()
+                        message = "Secteur réactivé."
                 else:
                     conn.execute("""
-                        INSERT INTO secteurs (nom)
-                        VALUES (?)
-                    """, (nom,))
+                        INSERT INTO secteurs (
+                            nom,
+                            actif
+                        )
+                        VALUES (?, ?)
+                    """, (
+                        nom,
+                        1
+                    ))
 
                     conn.commit()
                     message = "Secteur ajouté."
@@ -189,54 +207,33 @@ def gerer_secteurs():
     "/parametres/secteurs/<int:secteur_id>/supprimer",
     methods=["POST"]
 )
+@parametres_bp.route(
+    "/parametres/secteurs/<int:secteur_id>/supprimer",
+    methods=["POST"]
+)
 def supprimer_secteur(secteur_id):
-    conn = get_db_connection()
-
-    try:
-        demande = conn.execute("""
+    with transaction_db() as conn:
+        secteur = conn.execute("""
             SELECT id
-            FROM demandes_intervention
-            WHERE secteur_id = ?
-            LIMIT 1
+            FROM secteurs
+            WHERE id = ?
         """, (secteur_id,)).fetchone()
 
-        rapport = conn.execute("""
-            SELECT id
-            FROM rapports_intervention
-            WHERE secteur_id = ?
-            LIMIT 1
-        """, (secteur_id,)).fetchone()
-
-        demandeur = conn.execute("""
-            SELECT id
-            FROM demandeurs
-            WHERE secteur_id = ?
-            LIMIT 1
-        """, (secteur_id,)).fetchone()
-
-        if demande or rapport or demandeur:
-            return (
-                "Impossible de supprimer un secteur encore utilisé.",
-                400
-            )
+        if secteur is None:
+            return "Secteur introuvable.", 404
 
         conn.execute("""
-            DELETE FROM secteurs
+            UPDATE secteurs
+            SET actif = ?
             WHERE id = ?
-        """, (secteur_id,))
+        """, (
+            0,
+            secteur_id
+        ))
 
-        conn.commit()
-
-        return redirect(
-            url_for("parametres.gerer_secteurs")
-        )
-
-    except Exception:
-        conn.rollback()
-        raise
-
-    finally:
-        conn.close()
+    return redirect(
+        url_for("parametres.gerer_secteurs")
+    )
 
 
 @parametres_bp.route(
@@ -411,4 +408,138 @@ def supprimer_technicien(technicien_id):
 
     return redirect(
         url_for("parametres.gerer_techniciens")
+    )
+
+@parametres_bp.route(
+    "/parametres/machines",
+    methods=["GET", "POST"]
+)
+def gerer_machines():
+    message = None
+    erreur = None
+    secteur_selectionne = ""
+
+    if request.method == "POST":
+        secteur_selectionne = request.form.get(
+            "secteur_id",
+            ""
+        ).strip()
+
+        nom = request.form.get(
+            "nom",
+            ""
+        ).strip()
+
+        if not secteur_selectionne or not nom:
+            erreur = (
+                "Le secteur et le nom de la machine "
+                "sont obligatoires."
+            )
+
+        else:
+            try:
+                with transaction_db() as conn:
+                    machine_existante = conn.execute("""
+                        SELECT id, actif
+                        FROM machines
+                        WHERE secteur_id = ?
+                          AND LOWER(TRIM(nom)) = LOWER(TRIM(?))
+                        LIMIT 1
+                    """, (
+                        secteur_selectionne,
+                        nom
+                    )).fetchone()
+
+                    if machine_existante:
+                        if machine_existante["actif"]:
+                            erreur = (
+                                "Cette machine existe déjà "
+                                "dans ce secteur."
+                            )
+
+                        else:
+                            conn.execute("""
+                                UPDATE machines
+                                SET actif = ?
+                                WHERE id = ?
+                            """, (
+                                1,
+                                machine_existante["id"]
+                            ))
+
+                            message = "Machine réactivée."
+
+                    else:
+                        conn.execute("""
+                            INSERT INTO machines (
+                                nom,
+                                secteur_id,
+                                actif
+                            )
+                            VALUES (?, ?, ?)
+                        """, (
+                            nom,
+                            secteur_selectionne,
+                            1
+                        ))
+
+                        message = "Machine ajoutée."
+
+            except Exception as error:
+                erreur = f"Erreur : {error}"
+
+    with connexion_db() as conn:
+        secteurs = conn.execute("""
+            SELECT *
+            FROM secteurs
+            WHERE actif = ?
+            ORDER BY nom
+        """, (1,)).fetchall()
+
+        machines = conn.execute("""
+            SELECT
+                machines.*,
+                secteurs.nom AS secteur_nom
+            FROM machines
+            JOIN secteurs
+                ON machines.secteur_id = secteurs.id
+            WHERE machines.actif = ?
+            ORDER BY secteurs.nom, machines.nom
+        """, (1,)).fetchall()
+
+    return render_template(
+        "parametres/machines.html",
+        secteurs=secteurs,
+        machines=machines,
+        secteur_selectionne=secteur_selectionne,
+        message=message,
+        erreur=erreur
+    )
+
+@parametres_bp.route(
+    "/parametres/machines/<int:machine_id>/supprimer",
+    methods=["POST"]
+)
+def supprimer_machine(machine_id):
+    with transaction_db() as conn:
+        machine = conn.execute("""
+            SELECT id
+            FROM machines
+            WHERE id = ?
+        """, (machine_id,)).fetchone()
+
+        if machine is None:
+            return "Machine introuvable.", 404
+
+        conn.execute("""
+            UPDATE machines
+            SET actif = ?
+            WHERE id = ?
+        """, (
+            0,
+            machine_id
+        ))
+
+    return redirect(
+        url_for("parametres.gerer_machines")
     )

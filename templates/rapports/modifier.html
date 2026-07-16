@@ -9,11 +9,19 @@
             <p>Rapport n°{{ rapport.id }}</p>
         </div>
 
-        <a href="/rapports/{{ rapport.id }}" class="btn-secondary">← Retour</a>
+        <a
+            href="/rapports/{{ rapport.id }}"
+            class="btn-secondary"
+        >
+            ← Retour
+        </a>
     </div>
 
-    <form method="POST" enctype="multipart/form-data" class="form">
-
+    <form
+        method="POST"
+        enctype="multipart/form-data"
+        class="form"
+    >
         <label for="date_rapport">
             Date du rapport
         </label>
@@ -26,27 +34,93 @@
             required
         >
 
-        <label>Secteur</label>
-        <select name="secteur_id" required>
-            {% for secteur in secteurs %}
-                <option value="{{ secteur.id }}"
-                    {% if secteur.id == rapport.secteur_id %}selected{% endif %}>
-                    {{ secteur.nom }}
-                </option>
-            {% endfor %}
-        </select>
+        <div class="autocomplete-field">
+            <label for="secteur-search">Secteur</label>
 
-        <label>Machine</label>
-        <input type="text" name="machine" value="{{ rapport.machine }}" required>
+            <input
+                type="text"
+                id="secteur-search"
+                value="{{ rapport.secteur_nom or '' }}"
+                placeholder="Rechercher un secteur"
+                autocomplete="off"
+                required
+            >
 
-        <label>Problème</label>
-        <textarea name="probleme" rows="4" required>{{ rapport.probleme }}</textarea>
+            <input
+                type="hidden"
+                id="secteur-id"
+                name="secteur_id"
+                value="{{ rapport.secteur_id or '' }}"
+            >
 
-        <label>Travaux réalisés</label>
-        <textarea name="travaux" rows="4" required>{{ rapport.travaux }}</textarea>
+            <div
+                id="secteurSuggestions"
+                class="autocomplete-suggestions"
+            >
+                {% for secteur in secteurs %}
+                    <button
+                        type="button"
+                        class="autocomplete-option"
+                        data-id="{{ secteur.id }}"
+                        data-value="{{ secteur.nom }}"
+                    >
+                        {{ secteur.nom }}
+                    </button>
+                {% endfor %}
+            </div>
+        </div>
 
         <div class="autocomplete-field">
-            <label for="technicien">Nom du technicien</label>
+            <label for="machine-search">Machine</label>
+
+            <input
+                type="text"
+                id="machine-search"
+                name="machine"
+                value="{{ rapport.machine if rapport else '' }}"
+                placeholder="Choisissez d’abord un secteur"
+                autocomplete="off"
+                required
+                disabled
+            >
+
+            <div
+                id="machineSuggestions"
+                class="autocomplete-suggestions"
+            >
+                {% for machine in machines %}
+                    <button
+                        type="button"
+                        class="autocomplete-option machine-option"
+                        data-secteur-id="{{ machine.secteur_id }}"
+                        data-value="{{ machine.nom }}"
+                    >
+                        {{ machine.nom }}
+                    </button>
+                {% endfor %}
+            </div>
+        </div>
+
+        <label>Problème</label>
+
+        <textarea
+            name="probleme"
+            rows="4"
+            required
+        >{{ rapport.probleme }}</textarea>
+
+        <label>Travaux réalisés</label>
+
+        <textarea
+            name="travaux"
+            rows="4"
+            required
+        >{{ rapport.travaux }}</textarea>
+
+        <div class="autocomplete-field">
+            <label for="technicien">
+                Nom du technicien
+            </label>
 
             <input
                 type="text"
@@ -75,51 +149,517 @@
         </div>
 
         <label>Commentaire</label>
-        <textarea name="commentaire" rows="4">{{ rapport.commentaire }}</textarea>
+
+        <textarea
+            name="commentaire"
+            rows="4"
+        >{{ rapport.commentaire }}</textarea>
 
         <label>Référence</label>
-        <input type="text" name="reference" value="{{ rapport.reference }}">
 
-        <label>Ajouter une photo</label>
+        <input
+            type="text"
+            name="reference"
+            value="{{ rapport.reference }}"
+        >
+
+        {% if photos %}
+            <div class="existing-photos-section">
+                <label>Photos déjà enregistrées</label>
+
+                <div class="existing-photos-grid">
+                    {% for photo in photos %}
+                        <div class="existing-photo-card">
+
+                            {% if photo.url_photo %}
+                                <img
+                                    src="{{ photo.url_photo }}"
+                                    alt="Photo du rapport"
+                                    onclick="openImage(this.src)"
+                                >
+
+                            {% elif photo.nom_fichier %}
+                                <img
+                                    src="{{ url_for(
+                                        'uploaded_photo',
+                                        filename=photo.nom_fichier
+                                    ) }}"
+                                    alt="Photo du rapport"
+                                    onclick="openImage(this.src)"
+                                >
+                            {% endif %}
+
+                            <button
+                                type="button"
+                                class="existing-photo-delete"
+                                data-confirm-delete
+                                data-url="{{ url_for(
+                                    'rapports.supprimer_photo_rapport',
+                                    rapport_id=rapport.id,
+                                    photo_id=photo.id
+                                ) }}"
+                                data-name="cette photo"
+                                title="Supprimer cette photo"
+                            >
+                                🗑️
+                            </button>
+                        </div>
+                    {% endfor %}
+                </div>
+            </div>
+        {% endif %}
+
+        <label>Ajouter de nouvelles photos</label>
 
         <label class="upload-box">
             <input
                 type="file"
-                name="photo"
+                name="photos"
+                id="photos"
                 accept="image/*"
-                onchange="updateFileName(this)"
+                multiple
+                onchange="ajouterPhotos(this)"
             >
 
             <div class="upload-content">
                 <div class="upload-icon">📷</div>
 
-                <img
-                    id="preview-image"
-                    class="preview-image"
-                    style="display:none;"
-                >
+                <strong>Ajouter des photos</strong>
 
-                <strong>Ajouter une photo</strong>
-                <p id="file-name">Cliquez pour sélectionner une image</p>
+                <p id="file-name">
+                    Cliquez plusieurs fois pour ajouter d’autres images
+                </p>
+
+                <div
+                    id="photos-preview"
+                    class="photos-preview"
+                ></div>
             </div>
         </label>
 
-        <button type="submit" class="btn">Enregistrer les modifications</button>
-
+        <button type="submit" class="btn">
+            Enregistrer les modifications
+        </button>
     </form>
 </section>
 
-<script>
-function updateFileName(input) {
-    const text = document.getElementById("file-name");
-    const preview = document.getElementById("preview-image");
+<div
+    id="imageModal"
+    class="image-modal"
+    onclick="closeImage()"
+>
+    <span class="close-image">&times;</span>
 
-    if (input.files.length) {
-        const file = input.files[0];
-        text.innerHTML = "✅ " + file.name;
-        preview.src = URL.createObjectURL(file);
-        preview.style.display = "block";
-    }
+    <img
+        id="imagePreview"
+        class="image-preview"
+        alt="Aperçu"
+    >
+</div>
+
+<script>
+const photosSelectionnees = new DataTransfer();
+const urlsApercu = [];
+
+function ajouterPhotos(input) {
+    Array.from(input.files).forEach(function (file) {
+        const existeDeja = Array.from(
+            photosSelectionnees.files
+        ).some(function (photoExistante) {
+            return (
+                photoExistante.name === file.name
+                && photoExistante.size === file.size
+                && photoExistante.lastModified === file.lastModified
+            );
+        });
+
+        if (!existeDeja) {
+            photosSelectionnees.items.add(file);
+        }
+    });
+
+    input.files = photosSelectionnees.files;
+    afficherApercus();
 }
+
+function afficherApercus() {
+    const previewContainer = document.getElementById(
+        "photos-preview"
+    );
+
+    const text = document.getElementById("file-name");
+
+    urlsApercu.forEach(function (url) {
+        URL.revokeObjectURL(url);
+    });
+
+    urlsApercu.length = 0;
+    previewContainer.innerHTML = "";
+
+    const fichiers = Array.from(photosSelectionnees.files);
+
+    if (!fichiers.length) {
+        text.textContent =
+            "Cliquez plusieurs fois pour ajouter d’autres images";
+        return;
+    }
+
+    text.textContent =
+        fichiers.length + " photo(s) sélectionnée(s)";
+
+    fichiers.forEach(function (file, index) {
+        const card = document.createElement("div");
+        card.className = "photo-preview-card";
+
+        const image = document.createElement("img");
+        const imageUrl = URL.createObjectURL(file);
+
+        urlsApercu.push(imageUrl);
+
+        image.src = imageUrl;
+        image.alt = file.name;
+        image.className = "preview-image";
+
+        const deleteButton = document.createElement("button");
+
+        deleteButton.type = "button";
+        deleteButton.className = "photo-preview-delete";
+        deleteButton.innerHTML = "&times;";
+        deleteButton.title = "Retirer cette photo";
+
+        deleteButton.addEventListener("click", function (event) {
+            event.preventDefault();
+            event.stopPropagation();
+
+            supprimerPhotoSelectionnee(index);
+        });
+
+        card.appendChild(image);
+        card.appendChild(deleteButton);
+        previewContainer.appendChild(card);
+    });
+}
+
+function supprimerPhotoSelectionnee(indexASupprimer) {
+    const nouvelleSelection = new DataTransfer();
+
+    Array.from(photosSelectionnees.files).forEach(
+        function (file, index) {
+            if (index !== indexASupprimer) {
+                nouvelleSelection.items.add(file);
+            }
+        }
+    );
+
+    photosSelectionnees.items.clear();
+
+    Array.from(nouvelleSelection.files).forEach(function (file) {
+        photosSelectionnees.items.add(file);
+    });
+
+    document.getElementById("photos").files =
+        photosSelectionnees.files;
+
+    afficherApercus();
+}
+
+function openImage(src) {
+    document.getElementById("imagePreview").src = src;
+    document.getElementById("imageModal").style.display = "flex";
+}
+
+function closeImage() {
+    document.getElementById("imageModal").style.display = "none";
+}
+
+document.addEventListener("DOMContentLoaded", function () {
+    const input = document.getElementById("technicien");
+    const suggestions = document.getElementById(
+        "technicienSuggestions"
+    );
+
+    const options = suggestions.querySelectorAll(
+        ".autocomplete-option"
+    );
+
+    function filtrerTechniciens() {
+        const recherche = input.value.trim().toLowerCase();
+        let resultatVisible = false;
+
+        options.forEach(function (option) {
+            const nom = option.dataset.value.toLowerCase();
+            const visible = (
+                !recherche
+                || nom.includes(recherche)
+            );
+
+            option.style.display = visible ? "block" : "none";
+
+            if (visible) {
+                resultatVisible = true;
+            }
+        });
+
+        suggestions.classList.toggle(
+            "is-visible",
+            resultatVisible
+        );
+    }
+
+    input.addEventListener("focus", filtrerTechniciens);
+    input.addEventListener("input", filtrerTechniciens);
+
+    options.forEach(function (option) {
+        option.addEventListener("click", function () {
+            input.value = option.dataset.value;
+            suggestions.classList.remove("is-visible");
+        });
+    });
+
+    document.addEventListener("click", function (event) {
+        if (
+            !input.contains(event.target)
+            && !suggestions.contains(event.target)
+        ) {
+            suggestions.classList.remove("is-visible");
+        }
+    });
+});
 </script>
+
+<script>
+document.addEventListener("DOMContentLoaded", function () {
+    const secteurInput = document.getElementById("secteur-search");
+    const secteurIdInput = document.getElementById("secteur-id");
+    const suggestions = document.getElementById(
+        "secteurSuggestions"
+    );
+
+    if (!secteurInput || !secteurIdInput || !suggestions) {
+        return;
+    }
+
+    const options = suggestions.querySelectorAll(
+        ".autocomplete-option"
+    );
+
+    function filtrerSecteurs() {
+        const recherche = secteurInput.value
+            .trim()
+            .toLowerCase();
+
+        let resultatVisible = false;
+
+        /*
+         * Si l'utilisateur modifie le texte, l'ancien identifiant
+         * n'est plus considéré comme sélectionné.
+         */
+        secteurIdInput.value = "";
+
+        options.forEach(function (option) {
+            const nom = option.dataset.value.toLowerCase();
+
+            const visible = (
+                !recherche
+                || nom.includes(recherche)
+            );
+
+            option.style.display = visible
+                ? "block"
+                : "none";
+
+            if (visible) {
+                resultatVisible = true;
+            }
+        });
+
+        suggestions.classList.toggle(
+            "is-visible",
+            resultatVisible
+        );
+    }
+
+    secteurInput.addEventListener(
+        "focus",
+        filtrerSecteurs
+    );
+
+    secteurInput.addEventListener(
+        "input",
+        filtrerSecteurs
+    );
+
+    options.forEach(function (option) {
+        option.addEventListener("click", function () {
+            secteurInput.value = option.dataset.value;
+            secteurIdInput.value = option.dataset.id;
+
+            suggestions.classList.remove("is-visible");
+        });
+    });
+
+    document.addEventListener("click", function (event) {
+        if (
+            !secteurInput.contains(event.target)
+            && !suggestions.contains(event.target)
+        ) {
+            suggestions.classList.remove("is-visible");
+        }
+    });
+});
+</script>
+
+<script>
+document.addEventListener("DOMContentLoaded", function () {
+    const secteurIdInput = document.getElementById("secteur-id");
+    const machineInput = document.getElementById("machine-search");
+    const machineSuggestions = document.getElementById(
+        "machineSuggestions"
+    );
+
+    if (
+        !secteurIdInput
+        || !machineInput
+        || !machineSuggestions
+    ) {
+        return;
+    }
+
+    const machineOptions = machineSuggestions.querySelectorAll(
+        ".machine-option"
+    );
+
+    function mettreAJourMachines() {
+        const secteurId = secteurIdInput.value;
+
+        machineInput.value = "";
+        machineInput.disabled = !secteurId;
+
+        if (!secteurId) {
+            machineInput.placeholder =
+                "Choisissez d’abord un secteur";
+
+            machineSuggestions.classList.remove("is-visible");
+            return;
+        }
+
+        machineInput.placeholder =
+            "Rechercher une machine";
+
+        machineOptions.forEach(function (option) {
+            const visible = (
+                option.dataset.secteurId === secteurId
+            );
+
+            option.style.display = visible
+                ? "block"
+                : "none";
+        });
+    }
+
+    machineInput.addEventListener("focus", function () {
+        const secteurId = secteurIdInput.value;
+
+        if (!secteurId) {
+            return;
+        }
+
+        let resultatVisible = false;
+
+        machineOptions.forEach(function (option) {
+            const visible = (
+                option.dataset.secteurId === secteurId
+            );
+
+            option.style.display = visible
+                ? "block"
+                : "none";
+
+            if (visible) {
+                resultatVisible = true;
+            }
+        });
+
+        machineSuggestions.classList.toggle(
+            "is-visible",
+            resultatVisible
+        );
+    });
+
+    machineInput.addEventListener("input", function () {
+        const secteurId = secteurIdInput.value;
+        const recherche = machineInput.value
+            .trim()
+            .toLowerCase();
+
+        let resultatVisible = false;
+
+        machineOptions.forEach(function (option) {
+            const correspondSecteur = (
+                option.dataset.secteurId === secteurId
+            );
+
+            const correspondRecherche = (
+                option.dataset.value
+                    .toLowerCase()
+                    .includes(recherche)
+            );
+
+            const visible = (
+                correspondSecteur
+                && correspondRecherche
+            );
+
+            option.style.display = visible
+                ? "block"
+                : "none";
+
+            if (visible) {
+                resultatVisible = true;
+            }
+        });
+
+        machineSuggestions.classList.toggle(
+            "is-visible",
+            resultatVisible
+        );
+    });
+
+    machineOptions.forEach(function (option) {
+        option.addEventListener("click", function () {
+            machineInput.value = option.dataset.value;
+            machineSuggestions.classList.remove("is-visible");
+        });
+    });
+
+    document.addEventListener("click", function (event) {
+        if (
+            !machineInput.contains(event.target)
+            && !machineSuggestions.contains(event.target)
+        ) {
+            machineSuggestions.classList.remove("is-visible");
+        }
+    });
+
+    /*
+     * Dès qu’un secteur est choisi, active les machines.
+     */
+    document
+        .querySelectorAll(
+            "#secteurSuggestions .autocomplete-option"
+        )
+        .forEach(function (option) {
+            option.addEventListener("click", mettreAJourMachines);
+        });
+
+    /*
+     * Sur une modification, conserve la machine actuelle.
+     */
+    if (secteurIdInput.value) {
+        machineInput.disabled = false;
+        machineInput.placeholder = "Rechercher une machine";
+    }
+});
+</script>
+
 {% endblock %}

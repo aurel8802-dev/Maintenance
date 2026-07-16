@@ -102,16 +102,18 @@
                 ✏️ Modifier
             </a>
 
-            <form
-                method="POST"
-                action="{{ url_for('rapports.supprimer_rapport', rapport_id=rapport.id) }}"
-                style="display:inline;"
-                onsubmit="return confirm('Supprimer définitivement ce rapport ?');"
+            <button
+                type="button"
+                class="btn-danger"
+                data-confirm-delete
+                data-url="{{ url_for(
+                    'rapports.supprimer_rapport',
+                    rapport_id=rapport.id
+                ) }}"
+                data-name="ce rapport"
             >
-                <button type="submit" class="btn-danger">
-                    🗑️ Supprimer
-                </button>
-            </form>
+                🗑️ Supprimer
+            </button>
 
         </div>
     </div>

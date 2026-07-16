@@ -207,3 +207,43 @@ def supprimer_photos(conn, type_element, element_id):
         type_element,
         element_id
     ))
+
+def supprimer_photo(conn, photo_id):
+    """
+    Supprime une seule photo de Cloudinary ou du stockage local,
+    puis retire sa ligne de la base de données.
+    """
+    photo = conn.execute("""
+        SELECT *
+        FROM photos
+        WHERE id = ?
+    """, (photo_id,)).fetchone()
+
+    if photo is None:
+        return False
+
+    public_id = photo["public_id"]
+    nom_fichier = photo["nom_fichier"]
+
+    if public_id and cloudinary_configured():
+        cloudinary.uploader.destroy(
+            public_id,
+            resource_type="image",
+            invalidate=True
+        )
+
+    elif nom_fichier:
+        photo_path = os.path.join(
+            current_app.config["UPLOAD_FOLDER"],
+            nom_fichier
+        )
+
+        if os.path.isfile(photo_path):
+            os.remove(photo_path)
+
+    conn.execute("""
+        DELETE FROM photos
+        WHERE id = ?
+    """, (photo_id,))
+
+    return True

@@ -11,9 +11,11 @@ from services.database_service import (
     connexion_db,
     transaction_db,
 )
+
 from services.photo_service import (
     enregistrer_photo,
     recuperer_photos,
+    supprimer_photo,
     supprimer_photos,
 )
 
@@ -38,20 +40,25 @@ RAPPORT_DETAIL_QUERY = """
 
 
 def get_all_secteurs(conn):
-    """Retourne les secteurs classés par ordre alphabétique."""
+    """Retourne uniquement les secteurs actifs."""
     return conn.execute("""
         SELECT *
         FROM secteurs
+        WHERE actif = ?
         ORDER BY nom
-    """).fetchall()
+    """, (1,)).fetchall()
 
 
 def get_rapport(conn, rapport_id):
-    """Récupère un rapport sans le nom du secteur."""
+    """Récupère un rapport avec le nom de son secteur."""
     return conn.execute("""
-        SELECT *
+        SELECT
+            rapports_intervention.*,
+            secteurs.nom AS secteur_nom
         FROM rapports_intervention
-        WHERE id = ?
+        LEFT JOIN secteurs
+            ON rapports_intervention.secteur_id = secteurs.id
+        WHERE rapports_intervention.id = ?
     """, (rapport_id,)).fetchone()
 
 
@@ -76,12 +83,14 @@ def nouveau_rapport():
         with connexion_db() as conn:
             secteurs = get_all_secteurs(conn)
             techniciens = get_all_techniciens(conn)
+            machines = get_all_machines(conn)
 
         return render_template(
             "rapports/nouveau.html",
             secteurs=secteurs,
             techniciens=techniciens,
-            date_du_jour=date.today().isoformat()
+            date_du_jour=date.today().isoformat(),
+            machines=machines
         )
 
     date_rapport_raw = request.form.get(
@@ -202,12 +211,15 @@ def nouveau_rapport():
 
         rapport_id = cursor.lastrowid
 
-        enregistrer_photo(
-            conn,
-            "rapport",
-            rapport_id,
-            request.files.get("photo")
-        )
+        photos_ajoutees = request.files.getlist("photos")
+
+        for photo in photos_ajoutees:
+            enregistrer_photo(
+                conn,
+                "rapport",
+                rapport_id,
+                photo
+            )
 
     return redirect(
         url_for(
@@ -350,14 +362,22 @@ def modifier_rapport(rapport_id):
 
             secteurs = get_all_secteurs(conn)
             techniciens = get_all_techniciens(conn)
+            machines = get_all_machines(conn)
+
+            photos = recuperer_photos(
+                conn,
+                "rapport",
+                rapport_id
+            )
 
         date_rapport_value = ""
 
         if rapport["date_rapport"]:
             try:
-                date_rapport_value = rapport["date_rapport"].strftime(
-                    "%Y-%m-%d"
-                )
+                date_rapport_value = rapport[
+                    "date_rapport"
+                ].strftime("%Y-%m-%d")
+
             except AttributeError:
                 date_rapport_value = str(
                     rapport["date_rapport"]
@@ -368,7 +388,9 @@ def modifier_rapport(rapport_id):
             rapport=rapport,
             secteurs=secteurs,
             techniciens=techniciens,
-            date_rapport_value=date_rapport_value
+            date_rapport_value=date_rapport_value,
+            photos=photos,
+            machines=machines
         )
 
     date_rapport_raw = request.form.get(
@@ -412,13 +434,22 @@ def modifier_rapport(rapport_id):
     ).strip()
 
     with connexion_db() as conn:
-        rapport = get_rapport(conn, rapport_id)
+        rapport = get_rapport(
+            conn,
+            rapport_id
+        )
 
         if rapport is None:
             abort(404)
 
         secteurs = get_all_secteurs(conn)
         techniciens = get_all_techniciens(conn)
+
+        photos = recuperer_photos(
+            conn,
+            "rapport",
+            rapport_id
+        )
 
     if not all([
         date_rapport_raw,
@@ -435,6 +466,7 @@ def modifier_rapport(rapport_id):
                 secteurs=secteurs,
                 techniciens=techniciens,
                 date_rapport_value=date_rapport_raw,
+                photos=photos,
                 erreur=(
                     "La date, le secteur, la machine, "
                     "le problème, les travaux et le "
@@ -458,6 +490,7 @@ def modifier_rapport(rapport_id):
                 secteurs=secteurs,
                 techniciens=techniciens,
                 date_rapport_value=date_rapport_raw,
+                photos=photos,
                 erreur="La date du rapport est invalide."
             ),
             400
@@ -488,16 +521,59 @@ def modifier_rapport(rapport_id):
             rapport_id
         ))
 
-        enregistrer_photo(
-            conn,
-            "rapport",
-            rapport_id,
-            request.files.get("photo")
-        )
+        photos_ajoutees = request.files.getlist("photos")
+
+        for photo in photos_ajoutees:
+            enregistrer_photo(
+                conn,
+                "rapport",
+                rapport_id,
+                photo
+            )
 
     return redirect(
         url_for(
             "rapports.detail_rapport",
+            rapport_id=rapport_id
+        )
+    )
+
+@rapports_bp.route(
+    "/rapports/<int:rapport_id>/photos/<int:photo_id>/supprimer",
+    methods=["POST"]
+)
+def supprimer_photo_rapport(rapport_id, photo_id):
+    with transaction_db() as conn:
+        rapport = get_rapport(
+            conn,
+            rapport_id
+        )
+
+        if rapport is None:
+            abort(404)
+
+        photo = conn.execute("""
+            SELECT id
+            FROM photos
+            WHERE id = ?
+              AND type_element = 'rapport'
+              AND element_id = ?
+        """, (
+            photo_id,
+            rapport_id
+        )).fetchone()
+
+        if photo is None:
+            abort(404)
+
+        supprimer_photo(
+            conn,
+            photo_id
+        )
+
+    return redirect(
+        url_for(
+            "rapports.modifier_rapport",
             rapport_id=rapport_id
         )
     )
@@ -534,3 +610,15 @@ def supprimer_rapport(rapport_id):
     return redirect(
         url_for("rapports.liste_rapports")
     )
+
+def get_all_machines(conn):
+    """Retourne uniquement les machines actives."""
+    return conn.execute("""
+        SELECT
+            machines.id,
+            machines.nom,
+            machines.secteur_id
+        FROM machines
+        WHERE machines.actif = ?
+        ORDER BY machines.nom
+    """, (1,)).fetchall()

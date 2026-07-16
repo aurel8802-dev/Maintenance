@@ -16,6 +16,7 @@ from services.database_service import (
 from services.photo_service import (
     enregistrer_photo,
     recuperer_photos,
+    supprimer_photo,
     supprimer_photos,
 )
 
@@ -50,21 +51,26 @@ def get_demande_detail(conn, demande_id):
 
 
 def get_demande_simple(conn, demande_id):
-    """Récupère uniquement les données principales d'une demande."""
+    """Récupère une demande avec le nom de son secteur."""
     return conn.execute("""
-        SELECT *
+        SELECT
+            demandes_intervention.*,
+            secteurs.nom AS secteur_nom
         FROM demandes_intervention
-        WHERE id = ?
+        LEFT JOIN secteurs
+            ON demandes_intervention.secteur_id = secteurs.id
+        WHERE demandes_intervention.id = ?
     """, (demande_id,)).fetchone()
 
 
 def get_all_secteurs(conn):
-    """Retourne la liste des secteurs par ordre alphabétique."""
+    """Retourne uniquement les secteurs actifs."""
     return conn.execute("""
         SELECT *
         FROM secteurs
+        WHERE actif = ?
         ORDER BY nom
-    """).fetchall()
+    """, (1,)).fetchall()
 
 
 # -------------------------------------------------------------------
@@ -179,12 +185,15 @@ def nouvelle_demande():
 
         demande_id = cursor.lastrowid
 
-        enregistrer_photo(
-            conn,
-            "demande",
-            demande_id,
-            request.files.get("photo")
-        )
+        photos = request.files.getlist("photos")
+
+        for photo in photos:
+            enregistrer_photo(
+                conn,
+                "demande",
+                demande_id,
+                photo
+            )
 
     return redirect(
         url_for(
@@ -343,12 +352,19 @@ def modifier_demande(demande_id):
                 demande["demandeur_id"],
             )).fetchone()
 
-        return render_template(
-            "demandes/modifier.html",
-            demande=demande,
-            demandeur=demandeur,
-            secteurs=secteurs
-        )
+            photos = recuperer_photos(
+                conn,
+                "demande",
+                demande_id
+            )
+
+            return render_template(
+                "demandes/modifier.html",
+                demande=demande,
+                demandeur=demandeur,
+                secteurs=secteurs,
+                photos=photos
+            )
 
     secteur_id = request.form.get("secteur_id", "").strip()
     demandeur_nom = request.form.get("demandeur", "").strip()
@@ -419,12 +435,15 @@ def modifier_demande(demande_id):
             demande_id
         ))
 
-        enregistrer_photo(
-            conn,
-            "demande",
-            demande_id,
-            request.files.get("photo")
-        )
+        photos = request.files.getlist("photos")
+
+        for photo in photos:
+            enregistrer_photo(
+                conn,
+                "demande",
+                demande_id,
+                photo
+            )
 
     return redirect(
         url_for(
@@ -433,6 +452,47 @@ def modifier_demande(demande_id):
         )
     )
 
+
+
+@demandes_bp.route(
+    "/demandes/<int:demande_id>/photos/<int:photo_id>/supprimer",
+    methods=["POST"]
+)
+def supprimer_photo_demande(demande_id, photo_id):
+    with transaction_db() as conn:
+        demande = get_demande_simple(
+            conn,
+            demande_id
+        )
+
+        if demande is None:
+            abort(404)
+
+        photo = conn.execute("""
+            SELECT id
+            FROM photos
+            WHERE id = ?
+              AND type_element = 'demande'
+              AND element_id = ?
+        """, (
+            photo_id,
+            demande_id
+        )).fetchone()
+
+        if photo is None:
+            abort(404)
+
+        supprimer_photo(
+            conn,
+            photo_id
+        )
+
+    return redirect(
+        url_for(
+            "demandes.modifier_demande",
+            demande_id=demande_id
+        )
+    )
 
 # -------------------------------------------------------------------
 # Suppression

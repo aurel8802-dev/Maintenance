@@ -194,6 +194,23 @@ def create_postgres_tables(cursor):
         )
     """)
 
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS secteurs (
+            id SERIAL PRIMARY KEY,
+            nom TEXT NOT NULL UNIQUE,
+            actif BOOLEAN NOT NULL DEFAULT TRUE
+        )
+    """)
+
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS machines (
+            id SERIAL PRIMARY KEY,
+            nom TEXT NOT NULL,
+            secteur_id INTEGER NOT NULL REFERENCES secteurs(id),
+            actif BOOLEAN NOT NULL DEFAULT TRUE,
+            UNIQUE (nom, secteur_id)
+        )
+    """)
 # -------------------------------------------------------------------
 # Création des tables SQLite
 # -------------------------------------------------------------------
@@ -269,43 +286,47 @@ def create_sqlite_tables(cursor):
         )
     """)
 
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS secteurs (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            nom TEXT NOT NULL UNIQUE,
+            actif INTEGER NOT NULL DEFAULT 1
+        )
+    """)
 
-# -------------------------------------------------------------------
-# Secteurs par défaut
-# -------------------------------------------------------------------
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS machines (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            nom TEXT NOT NULL,
+            secteur_id INTEGER NOT NULL,
+            actif INTEGER NOT NULL DEFAULT 1,
+            UNIQUE (nom, secteur_id),
+            FOREIGN KEY (secteur_id) REFERENCES secteurs(id)
+        )
+    """)
 
-DEFAULT_SECTORS = [
-    "Axame",
-    "Pourfendeuse",
-    "Extérieur",
-    "Mag Auto",
-    "Poste HT",
-    "Réseau Eau",
-    "Tuberie",
-    "Bâtiments",
-    "Pont n°2",
-    "Hall 1",
-    "Hall 2",
-    "V2",
-    "V3",
-    "V2-V3",
-    "V6"
-]
+def migrate_secteurs_table(conn):
+    cursor = conn.cursor()
 
+    if is_postgres():
+        cursor.execute("""
+            ALTER TABLE secteurs
+            ADD COLUMN IF NOT EXISTS actif BOOLEAN
+            NOT NULL DEFAULT TRUE
+        """)
+    else:
+        columns = cursor.execute("""
+            PRAGMA table_info(secteurs)
+        """).fetchall()
 
-def insert_default_sectors(cursor):
-    for sector_name in DEFAULT_SECTORS:
-        if is_postgres():
+        column_names = [column[1] for column in columns]
+
+        if "actif" not in column_names:
             cursor.execute("""
-                INSERT INTO secteurs (nom)
-                VALUES (%s)
-                ON CONFLICT (nom) DO NOTHING
-            """, (sector_name,))
-        else:
-            cursor.execute(
-                "INSERT OR IGNORE INTO secteurs (nom) VALUES (?)",
-                (sector_name,)
-            )
+                ALTER TABLE secteurs
+                ADD COLUMN actif INTEGER
+                NOT NULL DEFAULT 1
+            """)
 
 def migrate_photos_table(conn):
     cursor = conn.cursor()
@@ -352,7 +373,7 @@ def migrate_photos_table(conn):
 # -------------------------------------------------------------------
 
 def init_db():
-    """Crée les tables, applique les migrations et ajoute les secteurs."""
+    """Crée les tables et applique les migrations."""
     conn = get_db_connection()
 
     try:
@@ -364,7 +385,7 @@ def init_db():
             create_sqlite_tables(cursor)
 
         migrate_photos_table(conn)
-        insert_default_sectors(cursor)
+        migrate_secteurs_table(conn)
 
         conn.commit()
 

@@ -1,0 +1,151 @@
+{% extends "base.html" %}
+
+{% block content %}
+
+<section class="card">
+    <div class="section-header">
+        <div>
+            <h2>🏭 Machines</h2>
+            <p>
+                Ajouter les machines disponibles dans chaque secteur.
+            </p>
+        </div>
+
+        <a
+            href="{{ url_for('parametres.parametres') }}"
+            class="btn-secondary"
+        >
+            ← Retour
+        </a>
+    </div>
+
+    {% if erreur %}
+        <div class="error-box">
+            {{ erreur }}
+        </div>
+    {% endif %}
+
+    {% if message %}
+        <div class="success-text">
+            {{ message }}
+        </div>
+    {% endif %}
+
+    <form method="POST" class="form">
+
+    <select
+        name="secteur_id"
+        id="secteurMachine"
+        required
+    >
+        <option value="">
+            -- Choisir un secteur --
+        </option>
+
+        {% for secteur in secteurs %}
+            <option
+                value="{{ secteur.id }}"
+                {% if secteur_selectionne == secteur.id|string %}
+                    selected
+                {% endif %}
+            >
+                {{ secteur.nom }}
+            </option>
+        {% endfor %}
+    </select>
+
+        <label>Nom de la machine</label>
+
+        <input
+            type="text"
+            name="nom"
+            placeholder="Ex : Presse 1"
+            required
+        >
+
+        <button type="submit" class="btn">
+            Ajouter la machine
+        </button>
+    </form>
+
+    <hr>
+
+    <h3>Machines enregistrées</h3>
+
+    {% if machines %}
+        <div class="table-container">
+            <table class="modern-table">
+                <thead>
+                    <tr>
+                        <th>Secteur</th>
+                        <th>Machine</th>
+                        <th>Action</th>
+                    </tr>
+                </thead>
+
+                <tbody>
+                    {% for machine in machines %}
+                        <tr
+                            class="machine-row"
+                            data-secteur-id="{{ machine.secteur_id }}"
+                        >
+                            <td>{{ machine.secteur_nom }}</td>
+                            <td>{{ machine.nom }}</td>
+
+                            <td>
+                                <button
+                                    type="button"
+                                    class="btn-danger"
+                                    data-confirm-delete
+                                    data-url="{{ url_for(
+                                        'parametres.supprimer_machine',
+                                        machine_id=machine.id
+                                    ) }}"
+                                    data-name="{{ machine.nom }}"
+                                >
+                                    🗑️ Archiver
+                                </button>
+                            </td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    {% else %}
+        <p>Aucune machine enregistrée.</p>
+    {% endif %}
+</section>
+
+<script>
+document.addEventListener("DOMContentLoaded", function () {
+    const secteurSelect = document.getElementById("secteurMachine");
+    const machineRows = document.querySelectorAll(".machine-row");
+
+    if (!secteurSelect) {
+        return;
+    }
+
+    function filtrerMachines() {
+        const secteurId = secteurSelect.value;
+
+        machineRows.forEach(function (row) {
+            const correspond = (
+                secteurId
+                && row.dataset.secteurId === secteurId
+            );
+
+            row.style.display = correspond ? "" : "none";
+        });
+    }
+
+    secteurSelect.addEventListener("change", filtrerMachines);
+
+    /*
+     * Au chargement, aucune machine n'est affichée
+     * tant qu'aucun secteur n'est choisi.
+     */
+    filtrerMachines();
+});
+</script>
+
+{% endblock %}

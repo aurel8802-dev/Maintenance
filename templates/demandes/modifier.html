@@ -9,86 +9,371 @@
             <p>DI-{{ "%05d"|format(demande.id) }}</p>
         </div>
 
-        <a href="/demandes/{{ demande.id }}" class="btn-secondary">← Retour</a>
+        <a
+            href="/demandes/{{ demande.id }}"
+            class="btn-secondary"
+        >
+            ← Retour
+        </a>
     </div>
 
-    <form method="POST" class="form" enctype="multipart/form-data">
+    <form
+        method="POST"
+        class="form"
+        enctype="multipart/form-data"
+    >
+    <div class="autocomplete-field">
+        <label for="secteur-search">Secteur</label>
 
-        <label>Secteur</label>
-        <select name="secteur_id" required>
+        <input
+            type="text"
+            id="secteur-search"
+            value="{{ demande.secteur_nom or '' }}"
+            placeholder="Rechercher un secteur"
+            autocomplete="off"
+            required
+        >
+
+        <input
+            type="hidden"
+            id="secteur-id"
+            name="secteur_id"
+            value="{{ demande.secteur_id or '' }}"
+        >
+
+        <div
+            id="secteurSuggestions"
+            class="autocomplete-suggestions"
+        >
             {% for secteur in secteurs %}
-                <option value="{{ secteur.id }}"
-                    {% if secteur.id == demande.secteur_id %}selected{% endif %}>
+                <button
+                    type="button"
+                    class="autocomplete-option"
+                    data-id="{{ secteur.id }}"
+                    data-value="{{ secteur.nom }}"
+                >
                     {{ secteur.nom }}
-                </option>
+                </button>
             {% endfor %}
-        </select>
+        </div>
+    </div>
 
         <label>Demandeur</label>
-        <input type="text" name="demandeur"
-               value="{{ demandeur.nom if demandeur else '' }}"
-               required>
+
+        <input
+            type="text"
+            name="demandeur"
+            value="{{ demandeur.nom if demandeur else '' }}"
+            required
+        >
 
         <label>Objet de la demande</label>
-        <input type="text" name="nature_travaux"
-               value="{{ demande.nature_travaux }}"
-               required>
+
+        <input
+            type="text"
+            name="nature_travaux"
+            value="{{ demande.nature_travaux }}"
+            required
+        >
 
         <label>Description</label>
-        <textarea name="description" rows="5" required>{{ demande.description }}</textarea>
 
-        <label>Photo</label>
+        <textarea
+            name="description"
+            rows="5"
+            required
+        >{{ demande.description }}</textarea>
+
+        {% if photos %}
+            <div class="existing-photos-section">
+                <label>Photos déjà enregistrées</label>
+
+                <div class="existing-photos-grid">
+                    {% for photo in photos %}
+                        <div class="existing-photo-card">
+
+                            {% if photo.url_photo %}
+                                <img
+                                    src="{{ photo.url_photo }}"
+                                    alt="Photo de la demande"
+                                    onclick="openImage(this.src)"
+                                >
+
+                            {% elif photo.nom_fichier %}
+                                <img
+                                    src="{{ url_for(
+                                        'uploaded_photo',
+                                        filename=photo.nom_fichier
+                                    ) }}"
+                                    alt="Photo de la demande"
+                                    onclick="openImage(this.src)"
+                                >
+                            {% endif %}
+
+                            <button
+                                type="button"
+                                class="existing-photo-delete"
+                                data-confirm-delete
+                                data-url="{{ url_for(
+                                    'demandes.supprimer_photo_demande',
+                                    demande_id=demande.id,
+                                    photo_id=photo.id
+                                ) }}"
+                                data-name="cette photo"
+                                title="Supprimer cette photo"
+                            >
+                                🗑️
+                            </button>
+                        </div>
+                    {% endfor %}
+                </div>
+            </div>
+        {% endif %}
+
+        <label>Ajouter de nouvelles photos</label>
 
         <label class="upload-box">
-
             <input
                 type="file"
-                name="photo"
-                id="photo"
+                name="photos"
+                id="photos"
                 accept="image/*"
-                onchange="updateFileName(this)"
+                multiple
+                onchange="ajouterPhotos(this)"
             >
 
             <div class="upload-content">
-
                 <div class="upload-icon">📷</div>
 
-                <img id="preview-image" class="preview-image" style="display:none;">
-
-                <strong>Ajouter une photo</strong>
+                <strong>Ajouter des photos</strong>
 
                 <p id="file-name">
-                    Cliquez pour sélectionner une image
+                    Cliquez plusieurs fois pour ajouter d’autres images
                 </p>
 
+                <div
+                    id="photos-preview"
+                    class="photos-preview"
+                ></div>
             </div>
-
         </label>
-        <button type="submit" class="btn">Enregistrer les modifications</button>
 
+        <button type="submit" class="btn">
+            Enregistrer les modifications
+        </button>
     </form>
 </section>
 
+<div
+    id="imageModal"
+    class="image-modal"
+    onclick="closeImage()"
+>
+    <span class="close-image">&times;</span>
+
+    <img
+        id="imagePreview"
+        class="image-preview"
+        alt="Aperçu"
+    >
+</div>
+
 <script>
+const photosSelectionnees = new DataTransfer();
+const urlsApercu = [];
 
-function updateFileName(input){
+function ajouterPhotos(input) {
+    Array.from(input.files).forEach(function (file) {
+        const existeDeja = Array.from(
+            photosSelectionnees.files
+        ).some(function (photoExistante) {
+            return (
+                photoExistante.name === file.name
+                && photoExistante.size === file.size
+                && photoExistante.lastModified === file.lastModified
+            );
+        });
 
-    const text = document.getElementById("file-name");
-    const preview = document.getElementById("preview-image");
+        if (!existeDeja) {
+            photosSelectionnees.items.add(file);
+        }
+    });
 
-    if(input.files.length){
-
-        const file = input.files[0];
-
-        text.innerHTML = "✅ " + file.name;
-
-        preview.src = URL.createObjectURL(file);
-        preview.style.display = "block";
-
-    }
-
+    input.files = photosSelectionnees.files;
+    afficherApercus();
 }
 
+function afficherApercus() {
+    const previewContainer = document.getElementById(
+        "photos-preview"
+    );
+
+    const text = document.getElementById("file-name");
+
+    urlsApercu.forEach(function (url) {
+        URL.revokeObjectURL(url);
+    });
+
+    urlsApercu.length = 0;
+    previewContainer.innerHTML = "";
+
+    const fichiers = Array.from(photosSelectionnees.files);
+
+    if (!fichiers.length) {
+        text.textContent =
+            "Cliquez plusieurs fois pour ajouter d’autres images";
+        return;
+    }
+
+    text.textContent =
+        fichiers.length + " photo(s) sélectionnée(s)";
+
+    fichiers.forEach(function (file, index) {
+        const card = document.createElement("div");
+        card.className = "photo-preview-card";
+
+        const image = document.createElement("img");
+        const imageUrl = URL.createObjectURL(file);
+
+        urlsApercu.push(imageUrl);
+
+        image.src = imageUrl;
+        image.alt = file.name;
+        image.className = "preview-image";
+
+        const deleteButton = document.createElement("button");
+
+        deleteButton.type = "button";
+        deleteButton.className = "photo-preview-delete";
+        deleteButton.innerHTML = "&times;";
+        deleteButton.title = "Retirer cette photo";
+
+        deleteButton.addEventListener("click", function (event) {
+            event.preventDefault();
+            event.stopPropagation();
+
+            supprimerPhotoSelectionnee(index);
+        });
+
+        card.appendChild(image);
+        card.appendChild(deleteButton);
+        previewContainer.appendChild(card);
+    });
+}
+
+function supprimerPhotoSelectionnee(indexASupprimer) {
+    const nouvelleSelection = new DataTransfer();
+
+    Array.from(photosSelectionnees.files).forEach(
+        function (file, index) {
+            if (index !== indexASupprimer) {
+                nouvelleSelection.items.add(file);
+            }
+        }
+    );
+
+    photosSelectionnees.items.clear();
+
+    Array.from(nouvelleSelection.files).forEach(function (file) {
+        photosSelectionnees.items.add(file);
+    });
+
+    document.getElementById("photos").files =
+        photosSelectionnees.files;
+
+    afficherApercus();
+}
+
+function openImage(src) {
+    document.getElementById("imagePreview").src = src;
+    document.getElementById("imageModal").style.display = "flex";
+}
+
+function closeImage() {
+    document.getElementById("imageModal").style.display = "none";
+}
+</script>
+
+<script>
+document.addEventListener("DOMContentLoaded", function () {
+    const secteurInput = document.getElementById("secteur-search");
+    const secteurIdInput = document.getElementById("secteur-id");
+    const suggestions = document.getElementById(
+        "secteurSuggestions"
+    );
+
+    if (!secteurInput || !secteurIdInput || !suggestions) {
+        return;
+    }
+
+    const options = suggestions.querySelectorAll(
+        ".autocomplete-option"
+    );
+
+    function filtrerSecteurs() {
+        const recherche = secteurInput.value
+            .trim()
+            .toLowerCase();
+
+        let resultatVisible = false;
+
+        /*
+         * Si l'utilisateur modifie le texte, l'ancien identifiant
+         * n'est plus considéré comme sélectionné.
+         */
+        secteurIdInput.value = "";
+
+        options.forEach(function (option) {
+            const nom = option.dataset.value.toLowerCase();
+
+            const visible = (
+                !recherche
+                || nom.includes(recherche)
+            );
+
+            option.style.display = visible
+                ? "block"
+                : "none";
+
+            if (visible) {
+                resultatVisible = true;
+            }
+        });
+
+        suggestions.classList.toggle(
+            "is-visible",
+            resultatVisible
+        );
+    }
+
+    secteurInput.addEventListener(
+        "focus",
+        filtrerSecteurs
+    );
+
+    secteurInput.addEventListener(
+        "input",
+        filtrerSecteurs
+    );
+
+    options.forEach(function (option) {
+        option.addEventListener("click", function () {
+            secteurInput.value = option.dataset.value;
+            secteurIdInput.value = option.dataset.id;
+
+            suggestions.classList.remove("is-visible");
+        });
+    });
+
+    document.addEventListener("click", function (event) {
+        if (
+            !secteurInput.contains(event.target)
+            && !suggestions.contains(event.target)
+        ) {
+            suggestions.classList.remove("is-visible");
+        }
+    });
+});
 </script>
 
 {% endblock %}

@@ -8,71 +8,274 @@
 
     <form method="POST" class="form" enctype="multipart/form-data">
 
-        <label>Secteur</label>
-        <select name="secteur_id" required>
-            <option value="">-- Choisir un secteur --</option>
-            {% for secteur in secteurs %}
-                <option value="{{ secteur.id }}">{{ secteur.nom }}</option>
-            {% endfor %}
-        </select>
-        
-        <label>Demandeur</label>
-        <input type="text" name="demandeur" placeholder="Nom du demandeur" required>
-
-        <label>Objet de la demande</label>
-        <input type="text" name="nature_travaux" placeholder="Ex : Remplacement galets, fuite hydraulique..." required>
- 
-        <label>Description de la demande</label>
-        <textarea name="description" rows="5" placeholder="Décris la demande..." required></textarea>
-
-       <label>Photo</label>
-
-        <label class="upload-box">
+        <div class="autocomplete-field">
+            <label for="secteur-search">Secteur</label>
 
             <input
+                type="text"
+                id="secteur-search"
+                placeholder="Rechercher un secteur"
+                autocomplete="off"
+                required
+            >
+
+            <input
+                type="hidden"
+                id="secteur-id"
+                name="secteur_id"
+            >
+
+            <div
+                id="secteurSuggestions"
+                class="autocomplete-suggestions"
+            >
+                {% for secteur in secteurs %}
+                    <button
+                        type="button"
+                        class="autocomplete-option"
+                        data-id="{{ secteur.id }}"
+                        data-value="{{ secteur.nom }}"
+                    >
+                        {{ secteur.nom }}
+                    </button>
+                {% endfor %}
+            </div>
+        </div>
+
+        <label>Demandeur</label>
+        <input
+            type="text"
+            name="demandeur"
+            placeholder="Nom du demandeur"
+            required
+        >
+
+        <label>Objet de la demande</label>
+        <input
+            type="text"
+            name="nature_travaux"
+            placeholder="Ex : Remplacement galets, fuite hydraulique..."
+            required
+        >
+
+        <label>Description de la demande</label>
+        <textarea
+            name="description"
+            rows="5"
+            placeholder="Décris la demande..."
+            required
+        ></textarea>
+
+        <label>Photos</label>
+
+        <label class="upload-box">
+            <input
                 type="file"
-                name="photo"
-                id="photo"
+                name="photos"
+                id="photos"
                 accept="image/*"
-                onchange="updateFileName(this)"
+                multiple
+                onchange="ajouterPhotos(this)"
             >
 
             <div class="upload-content">
                 <div class="upload-icon">📷</div>
 
-                <img id="preview-image" class="preview-image" style="display:none;">
-
-                <strong>Ajouter une photo</strong>
+                <strong>Ajouter des photos</strong>
 
                 <p id="file-name">
-                    Cliquez pour sélectionner une image
+                    Cliquez plusieurs fois pour ajouter d’autres images
                 </p>
-            </div>
 
+                <div
+                    id="photos-preview"
+                    class="photos-preview"
+                ></div>
+            </div>
         </label>
-        <button type="submit" class="btn">Enregistrer la demande</button>
+        <button type="submit" class="btn">
+            Enregistrer la demande
+        </button>
 
     </form>
 </section>
 
 <script>
-function updateFileName(input){
+const photosSelectionnees = new DataTransfer();
+const urlsApercu = [];
+
+function ajouterPhotos(input) {
+    Array.from(input.files).forEach(function (file) {
+        /*
+         * Évite d'ajouter exactement deux fois le même fichier.
+         */
+        const existeDeja = Array.from(
+            photosSelectionnees.files
+        ).some(function (photoExistante) {
+            return (
+                photoExistante.name === file.name
+                && photoExistante.size === file.size
+                && photoExistante.lastModified === file.lastModified
+            );
+        });
+
+        if (!existeDeja) {
+            photosSelectionnees.items.add(file);
+        }
+    });
+
+    /*
+     * Replace les fichiers cumulés dans le véritable champ HTML.
+     */
+    input.files = photosSelectionnees.files;
+
+    afficherApercus();
+}
+
+function afficherApercus() {
+    const previewContainer = document.getElementById(
+        "photos-preview"
+    );
 
     const text = document.getElementById("file-name");
-    const preview = document.getElementById("preview-image");
 
-    if(input.files.length){
+    /*
+     * Libère les anciennes URL temporaires.
+     */
+    urlsApercu.forEach(function (url) {
+        URL.revokeObjectURL(url);
+    });
 
-        const file = input.files[0];
+    urlsApercu.length = 0;
+    previewContainer.innerHTML = "";
 
-        text.innerHTML = "✅ " + file.name;
+    const fichiers = Array.from(photosSelectionnees.files);
 
-        preview.src = URL.createObjectURL(file);
-        preview.style.display = "block";
-
+    if (!fichiers.length) {
+        text.textContent =
+            "Cliquez plusieurs fois pour ajouter d’autres images";
+        return;
     }
 
+    text.textContent =
+        fichiers.length + " photo(s) sélectionnée(s)";
+
+    fichiers.forEach(function (file, index) {
+        const card = document.createElement("div");
+        card.className = "photo-preview-card";
+
+        const image = document.createElement("img");
+        const imageUrl = URL.createObjectURL(file);
+
+        urlsApercu.push(imageUrl);
+
+        image.src = imageUrl;
+        image.alt = file.name;
+        image.className = "preview-image";
+
+        const deleteButton = document.createElement("button");
+
+        deleteButton.type = "button";
+        deleteButton.className = "photo-preview-delete";
+        deleteButton.innerHTML = "&times;";
+        deleteButton.title = "Retirer cette photo";
+
+        deleteButton.addEventListener("click", function (event) {
+            event.preventDefault();
+            event.stopPropagation();
+
+            supprimerPhotoSelectionnee(index);
+        });
+
+        card.appendChild(image);
+        card.appendChild(deleteButton);
+        previewContainer.appendChild(card);
+    });
 }
+
+function supprimerPhotoSelectionnee(indexASupprimer) {
+    const nouvelleSelection = new DataTransfer();
+
+    Array.from(photosSelectionnees.files).forEach(
+        function (file, index) {
+            if (index !== indexASupprimer) {
+                nouvelleSelection.items.add(file);
+            }
+        }
+    );
+
+    photosSelectionnees.items.clear();
+
+    Array.from(nouvelleSelection.files).forEach(function (file) {
+        photosSelectionnees.items.add(file);
+    });
+
+    document.getElementById("photos").files =
+        photosSelectionnees.files;
+
+    afficherApercus();
+}
+</script>
+
+<script>
+document.addEventListener("DOMContentLoaded", function () {
+    const input = document.getElementById("secteur-search");
+    const hiddenInput = document.getElementById("secteur-id");
+    const suggestions = document.getElementById(
+        "secteurSuggestions"
+    );
+
+    const options = suggestions.querySelectorAll(
+        ".autocomplete-option"
+    );
+
+    function filtrerSecteurs() {
+        const recherche = input.value.trim().toLowerCase();
+        let resultatVisible = false;
+
+        hiddenInput.value = "";
+
+        options.forEach(function (option) {
+            const nom = option.dataset.value.toLowerCase();
+            const visible = (
+                !recherche
+                || nom.includes(recherche)
+            );
+
+            option.style.display = visible ? "block" : "none";
+
+            if (visible) {
+                resultatVisible = true;
+            }
+        });
+
+        suggestions.classList.toggle(
+            "is-visible",
+            resultatVisible
+        );
+    }
+
+    input.addEventListener("focus", filtrerSecteurs);
+    input.addEventListener("input", filtrerSecteurs);
+
+    options.forEach(function (option) {
+        option.addEventListener("click", function () {
+            input.value = option.dataset.value;
+            hiddenInput.value = option.dataset.id;
+
+            suggestions.classList.remove("is-visible");
+        });
+    });
+
+    document.addEventListener("click", function (event) {
+        if (
+            !input.contains(event.target)
+            && !suggestions.contains(event.target)
+        ) {
+            suggestions.classList.remove("is-visible");
+        }
+    });
+});
 </script>
 
 {% endblock %}

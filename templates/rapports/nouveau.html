@@ -23,18 +23,70 @@
             required
         >
 
-        <label>Secteur</label>
-        <select name="secteur_id" required>
-            <option value="">-- Choisir un secteur --</option>
-            {% for secteur in secteurs %}
-                <option value="{{ secteur.id }}">
-                    {{ secteur.nom }}
-                </option>
-            {% endfor %}
-        </select>
+        <div class="autocomplete-field">
+            <label for="secteur-search">Secteur</label>
 
-        <label>Machine</label>
-        <input type="text" name="machine" required>
+            <input
+                type="text"
+                id="secteur-search"
+                placeholder="Rechercher un secteur"
+                autocomplete="off"
+                required
+            >
+
+            <input
+                type="hidden"
+                id="secteur-id"
+                name="secteur_id"
+            >
+
+            <div
+                id="secteurSuggestions"
+                class="autocomplete-suggestions"
+            >
+                {% for secteur in secteurs %}
+                    <button
+                        type="button"
+                        class="autocomplete-option"
+                        data-id="{{ secteur.id }}"
+                        data-value="{{ secteur.nom }}"
+                    >
+                        {{ secteur.nom }}
+                    </button>
+                {% endfor %}
+            </div>
+        </div>
+
+        <div class="autocomplete-field">
+            <label for="machine-search">Machine</label>
+
+            <input
+                type="text"
+                id="machine-search"
+                name="machine"
+                value="{{ rapport.machine if rapport else '' }}"
+                placeholder="Choisissez d’abord un secteur"
+                autocomplete="off"
+                required
+                disabled
+            >
+
+            <div
+                id="machineSuggestions"
+                class="autocomplete-suggestions"
+            >
+                {% for machine in machines %}
+                    <button
+                        type="button"
+                        class="autocomplete-option machine-option"
+                        data-secteur-id="{{ machine.secteur_id }}"
+                        data-value="{{ machine.nom }}"
+                    >
+                        {{ machine.nom }}
+                    </button>
+                {% endfor %}
+            </div>
+        </div>
 
         <label>Problème</label>
         <textarea name="probleme" rows="4" required></textarea>
@@ -76,41 +128,37 @@
         <label>Référence</label>
         <input type="text" name="reference">
 
-        <label>Photo</label>
+        <label>Photos</label>
 
         <label class="upload-box">
-
             <input
                 type="file"
-                name="photo"
+                name="photos"
+                id="photos"
                 accept="image/*"
-                onchange="updateFileName(this)"
+                multiple
+                onchange="ajouterPhotos(this)"
             >
 
             <div class="upload-content">
-
                 <div class="upload-icon">
                     📷
                 </div>
 
-                <img
-                    id="preview-image"
-                    class="preview-image"
-                    style="display:none;"
-                >
-
                 <strong>
-                    Ajouter une photo
+                    Ajouter des photos
                 </strong>
 
                 <p id="file-name">
-                    Cliquez pour sélectionner une image
+                    Cliquez plusieurs fois pour ajouter d’autres images
                 </p>
 
+                <div
+                    id="photos-preview"
+                    class="photos-preview"
+                ></div>
             </div>
-
         </label>
-
         <button class="btn" type="submit">
             Enregistrer le rapport
         </button>
@@ -120,23 +168,117 @@
 </section>
 
 <script>
+const photosSelectionnees = new DataTransfer();
+const urlsApercu = [];
 
-function updateFileName(input){
+function ajouterPhotos(input) {
+    Array.from(input.files).forEach(function (file) {
+        const existeDeja = Array.from(
+            photosSelectionnees.files
+        ).some(function (photoExistante) {
+            return (
+                photoExistante.name === file.name
+                && photoExistante.size === file.size
+                && photoExistante.lastModified === file.lastModified
+            );
+        });
 
-    const preview = document.getElementById("preview-image");
-    const text = document.getElementById("file-name");
+        if (!existeDeja) {
+            photosSelectionnees.items.add(file);
+        }
+    });
 
-    if(input.files.length){
-
-        preview.src = URL.createObjectURL(input.files[0]);
-        preview.style.display = "block";
-
-        text.innerHTML = "✅ " + input.files[0].name;
-
-    }
-
+    input.files = photosSelectionnees.files;
+    afficherApercus();
 }
 
+function afficherApercus() {
+    const previewContainer = document.getElementById(
+        "photos-preview"
+    );
+
+    const text = document.getElementById("file-name");
+
+    urlsApercu.forEach(function (url) {
+        URL.revokeObjectURL(url);
+    });
+
+    urlsApercu.length = 0;
+    previewContainer.innerHTML = "";
+
+    const fichiers = Array.from(
+        photosSelectionnees.files
+    );
+
+    if (!fichiers.length) {
+        text.textContent =
+            "Cliquez plusieurs fois pour ajouter d’autres images";
+        return;
+    }
+
+    text.textContent =
+        fichiers.length + " photo(s) sélectionnée(s)";
+
+    fichiers.forEach(function (file, index) {
+        const card = document.createElement("div");
+        card.className = "photo-preview-card";
+
+        const image = document.createElement("img");
+        const imageUrl = URL.createObjectURL(file);
+
+        urlsApercu.push(imageUrl);
+
+        image.src = imageUrl;
+        image.alt = file.name;
+        image.className = "preview-image";
+
+        const deleteButton = document.createElement("button");
+
+        deleteButton.type = "button";
+        deleteButton.className = "photo-preview-delete";
+        deleteButton.innerHTML = "&times;";
+        deleteButton.title = "Retirer cette photo";
+
+        deleteButton.addEventListener(
+            "click",
+            function (event) {
+                event.preventDefault();
+                event.stopPropagation();
+
+                supprimerPhotoSelectionnee(index);
+            }
+        );
+
+        card.appendChild(image);
+        card.appendChild(deleteButton);
+        previewContainer.appendChild(card);
+    });
+}
+
+function supprimerPhotoSelectionnee(indexASupprimer) {
+    const nouvelleSelection = new DataTransfer();
+
+    Array.from(
+        photosSelectionnees.files
+    ).forEach(function (file, index) {
+        if (index !== indexASupprimer) {
+            nouvelleSelection.items.add(file);
+        }
+    });
+
+    photosSelectionnees.items.clear();
+
+    Array.from(
+        nouvelleSelection.files
+    ).forEach(function (file) {
+        photosSelectionnees.items.add(file);
+    });
+
+    document.getElementById("photos").files =
+        photosSelectionnees.files;
+
+    afficherApercus();
+}
 </script>
 
 <script>
@@ -184,6 +326,241 @@ document.addEventListener("DOMContentLoaded", function () {
             suggestions.classList.remove("is-visible");
         }
     });
+});
+</script>
+
+<script>
+document.addEventListener("DOMContentLoaded", function () {
+    const secteurInput = document.getElementById("secteur-search");
+    const secteurIdInput = document.getElementById("secteur-id");
+    const suggestions = document.getElementById(
+        "secteurSuggestions"
+    );
+
+    if (!secteurInput || !secteurIdInput || !suggestions) {
+        return;
+    }
+
+    const options = suggestions.querySelectorAll(
+        ".autocomplete-option"
+    );
+
+    function filtrerSecteurs() {
+        const recherche = secteurInput.value
+            .trim()
+            .toLowerCase();
+
+        let resultatVisible = false;
+
+        /*
+         * Si l'utilisateur modifie le texte, l'ancien identifiant
+         * n'est plus considéré comme sélectionné.
+         */
+        secteurIdInput.value = "";
+
+        options.forEach(function (option) {
+            const nom = option.dataset.value.toLowerCase();
+
+            const visible = (
+                !recherche
+                || nom.includes(recherche)
+            );
+
+            option.style.display = visible
+                ? "block"
+                : "none";
+
+            if (visible) {
+                resultatVisible = true;
+            }
+        });
+
+        suggestions.classList.toggle(
+            "is-visible",
+            resultatVisible
+        );
+    }
+
+    secteurInput.addEventListener(
+        "focus",
+        filtrerSecteurs
+    );
+
+    secteurInput.addEventListener(
+        "input",
+        filtrerSecteurs
+    );
+
+    options.forEach(function (option) {
+        option.addEventListener("click", function () {
+            secteurInput.value = option.dataset.value;
+            secteurIdInput.value = option.dataset.id;
+
+            suggestions.classList.remove("is-visible");
+        });
+    });
+
+    document.addEventListener("click", function (event) {
+        if (
+            !secteurInput.contains(event.target)
+            && !suggestions.contains(event.target)
+        ) {
+            suggestions.classList.remove("is-visible");
+        }
+    });
+});
+</script>
+
+<script>
+document.addEventListener("DOMContentLoaded", function () {
+    const secteurIdInput = document.getElementById("secteur-id");
+    const machineInput = document.getElementById("machine-search");
+    const machineSuggestions = document.getElementById(
+        "machineSuggestions"
+    );
+
+    if (
+        !secteurIdInput
+        || !machineInput
+        || !machineSuggestions
+    ) {
+        return;
+    }
+
+    const machineOptions = machineSuggestions.querySelectorAll(
+        ".machine-option"
+    );
+
+    function mettreAJourMachines() {
+        const secteurId = secteurIdInput.value;
+
+        machineInput.value = "";
+        machineInput.disabled = !secteurId;
+
+        if (!secteurId) {
+            machineInput.placeholder =
+                "Choisissez d’abord un secteur";
+
+            machineSuggestions.classList.remove("is-visible");
+            return;
+        }
+
+        machineInput.placeholder =
+            "Rechercher une machine";
+
+        machineOptions.forEach(function (option) {
+            const visible = (
+                option.dataset.secteurId === secteurId
+            );
+
+            option.style.display = visible
+                ? "block"
+                : "none";
+        });
+    }
+
+    machineInput.addEventListener("focus", function () {
+        const secteurId = secteurIdInput.value;
+
+        if (!secteurId) {
+            return;
+        }
+
+        let resultatVisible = false;
+
+        machineOptions.forEach(function (option) {
+            const visible = (
+                option.dataset.secteurId === secteurId
+            );
+
+            option.style.display = visible
+                ? "block"
+                : "none";
+
+            if (visible) {
+                resultatVisible = true;
+            }
+        });
+
+        machineSuggestions.classList.toggle(
+            "is-visible",
+            resultatVisible
+        );
+    });
+
+    machineInput.addEventListener("input", function () {
+        const secteurId = secteurIdInput.value;
+        const recherche = machineInput.value
+            .trim()
+            .toLowerCase();
+
+        let resultatVisible = false;
+
+        machineOptions.forEach(function (option) {
+            const correspondSecteur = (
+                option.dataset.secteurId === secteurId
+            );
+
+            const correspondRecherche = (
+                option.dataset.value
+                    .toLowerCase()
+                    .includes(recherche)
+            );
+
+            const visible = (
+                correspondSecteur
+                && correspondRecherche
+            );
+
+            option.style.display = visible
+                ? "block"
+                : "none";
+
+            if (visible) {
+                resultatVisible = true;
+            }
+        });
+
+        machineSuggestions.classList.toggle(
+            "is-visible",
+            resultatVisible
+        );
+    });
+
+    machineOptions.forEach(function (option) {
+        option.addEventListener("click", function () {
+            machineInput.value = option.dataset.value;
+            machineSuggestions.classList.remove("is-visible");
+        });
+    });
+
+    document.addEventListener("click", function (event) {
+        if (
+            !machineInput.contains(event.target)
+            && !machineSuggestions.contains(event.target)
+        ) {
+            machineSuggestions.classList.remove("is-visible");
+        }
+    });
+
+    /*
+     * Dès qu’un secteur est choisi, active les machines.
+     */
+    document
+        .querySelectorAll(
+            "#secteurSuggestions .autocomplete-option"
+        )
+        .forEach(function (option) {
+            option.addEventListener("click", mettreAJourMachines);
+        });
+
+    /*
+     * Sur une modification, conserve la machine actuelle.
+     */
+    if (secteurIdInput.value) {
+        machineInput.disabled = false;
+        machineInput.placeholder = "Rechercher une machine";
+    }
 });
 </script>
 
