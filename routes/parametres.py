@@ -461,11 +461,10 @@ def gerer_machines():
                         else:
                             conn.execute("""
                                 UPDATE machines
-                                SET actif = ?
+                                SET actif = TRUE
                                 WHERE id = ?
                             """, (
-                                1,
-                                machine_existante["id"]
+                                machine_existante["id"],
                             ))
 
                             message = "Machine réactivée."
@@ -477,11 +476,10 @@ def gerer_machines():
                                 secteur_id,
                                 actif
                             )
-                            VALUES (?, ?, ?)
+                            VALUES (?, ?, TRUE)
                         """, (
                             nom,
-                            secteur_selectionne,
-                            1
+                            secteur_selectionne
                         ))
 
                         message = "Machine ajoutée."
