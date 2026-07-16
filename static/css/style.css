@@ -1078,3 +1078,82 @@ body.modal-open {
         width: 100%;
     }
 }
+
+/* =========================================================
+   Barre de filtres — style prioritaire
+   ========================================================= */
+
+form.filters-bar {
+    display: grid !important;
+    grid-template-columns:
+        minmax(220px, 1fr)
+        minmax(170px, 220px)
+        minmax(150px, 190px)
+        minmax(150px, 190px)
+        auto;
+    align-items: center;
+    gap: 12px;
+    width: 100%;
+    margin: 0 0 14px;
+}
+
+form.filters-bar input[type="text"],
+form.filters-bar input[type="search"],
+form.filters-bar select {
+    width: 100% !important;
+    height: 46px !important;
+    min-height: 46px;
+    margin: 0 !important;
+    padding: 0 14px !important;
+
+    border: 1px solid #d1d5db !important;
+    border-radius: 12px !important;
+
+    background-color: #ffffff !important;
+    color: #111827 !important;
+
+    font-family: inherit !important;
+    font-size: 15px !important;
+    line-height: normal;
+
+    outline: none;
+}
+
+form.filters-bar select {
+    cursor: pointer;
+}
+
+form.filters-bar input:focus,
+form.filters-bar select:focus {
+    border-color: #2563eb !important;
+    box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.15) !important;
+}
+
+form.filters-bar .btn-secondary {
+    display: inline-flex !important;
+    align-items: center;
+    justify-content: center;
+
+    height: 46px;
+    min-height: 46px;
+    margin: 0;
+    padding: 0 18px;
+
+    white-space: nowrap;
+}
+
+@media (max-width: 1000px) {
+    form.filters-bar {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    form.filters-bar .btn-secondary {
+        width: 100%;
+    }
+}
+
+@media (max-width: 650px) {
+    form.filters-bar {
+        grid-template-columns: 1fr;
+    }
+}

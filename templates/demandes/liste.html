@@ -12,20 +12,30 @@
         <a href="/demandes/nouvelle" class="btn">+ Nouvelle demande</a>
     </div>
 
-<form method="GET" class="filters-bar" id="filtersForm">
-
-    <input 
-        type="text" 
-        name="recherche" 
+<form
+    method="GET"
+    class="filters-bar"
+    id="filtersForm"
+    data-filters-form
+    data-storage-key="gm-demandes-filters"
+>
+    <input
+        type="text"
+        name="recherche"
         placeholder="Rechercher..."
         value="{{ recherche }}"
-        oninput="submitFiltersDelayed()"
     >
 
-    <select name="secteur_id" onchange="document.getElementById('filtersForm').submit()">
+    <select name="secteur_id">
         <option value="">Tous les secteurs</option>
+
         {% for secteur in secteurs %}
-            <option value="{{ secteur.id }}" {% if secteur_id == secteur.id|string %}selected{% endif %}>
+            <option
+                value="{{ secteur.id }}"
+                {% if secteur_id == secteur.id|string %}
+                    selected
+                {% endif %}
+            >
                 {{ secteur.nom }}
             </option>
         {% endfor %}
@@ -44,8 +54,13 @@
         <option value="statut" {% if tri == "statut" %}selected{% endif %}>Par statut</option>
     </select>
 
-    <a href="/demandes" class="btn-secondary">Réinitialiser</a>
-
+    <a
+        href="/demandes"
+        class="btn-secondary"
+        data-reset-filters
+    >
+        Réinitialiser
+    </a>
 </form>
 
 <p class="result-count">

@@ -7,7 +7,10 @@
 
     <title>GM Interventions</title>
 
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <link
+    rel="stylesheet"
+    href="{{ url_for('static', filename='css/style.css') }}?v=2"
+>
 </head>
 
 <body>
@@ -69,6 +72,7 @@
 {% include "components/confirm_modal.html" %}
 
 <script src="{{ url_for('static', filename='js/confirm-modal.js') }}"></script>
+<script src="{{ url_for('static', filename='js/filters-memory.js') }}"></script>
 
 </body>
 

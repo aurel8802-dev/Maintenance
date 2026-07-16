@@ -17,6 +17,7 @@ from services.photo_service import (
     supprimer_photos,
 )
 
+from datetime import date, datetime
 
 rapports_bp = Blueprint("rapports", __name__)
 
@@ -79,18 +80,52 @@ def nouveau_rapport():
         return render_template(
             "rapports/nouveau.html",
             secteurs=secteurs,
-            techniciens=techniciens
+            techniciens=techniciens,
+            date_du_jour=date.today().isoformat()
         )
 
-    secteur_id = request.form.get("secteur_id", "").strip()
-    machine = request.form.get("machine", "").strip()
-    probleme = request.form.get("probleme", "").strip()
-    travaux = request.form.get("travaux", "").strip()
-    technicien = request.form.get("technicien", "").strip()
-    commentaire = request.form.get("commentaire", "").strip()
-    reference = request.form.get("reference", "").strip()
+    date_rapport_raw = request.form.get(
+        "date_rapport",
+        ""
+    ).strip()
+
+    secteur_id = request.form.get(
+        "secteur_id",
+        ""
+    ).strip()
+
+    machine = request.form.get(
+        "machine",
+        ""
+    ).strip()
+
+    probleme = request.form.get(
+        "probleme",
+        ""
+    ).strip()
+
+    travaux = request.form.get(
+        "travaux",
+        ""
+    ).strip()
+
+    technicien = request.form.get(
+        "technicien",
+        ""
+    ).strip()
+
+    commentaire = request.form.get(
+        "commentaire",
+        ""
+    ).strip()
+
+    reference = request.form.get(
+        "reference",
+        ""
+    ).strip()
 
     if not all([
+        date_rapport_raw,
         secteur_id,
         machine,
         probleme,
@@ -106,10 +141,37 @@ def nouveau_rapport():
                 "rapports/nouveau.html",
                 secteurs=secteurs,
                 techniciens=techniciens,
+                date_du_jour=(
+                    date_rapport_raw
+                    or date.today().isoformat()
+                ),
                 erreur=(
-                    "Le secteur, la machine, le problème, "
-                    "les travaux et le technicien sont obligatoires."
+                    "La date, le secteur, la machine, "
+                    "le problème, les travaux et le "
+                    "technicien sont obligatoires."
                 )
+            ),
+            400
+        )
+
+    try:
+        date_rapport = datetime.strptime(
+            date_rapport_raw,
+            "%Y-%m-%d"
+        )
+
+    except ValueError:
+        with connexion_db() as conn:
+            secteurs = get_all_secteurs(conn)
+            techniciens = get_all_techniciens(conn)
+
+        return (
+            render_template(
+                "rapports/nouveau.html",
+                secteurs=secteurs,
+                techniciens=techniciens,
+                date_du_jour=date.today().isoformat(),
+                erreur="La date du rapport est invalide."
             ),
             400
         )
@@ -123,9 +185,10 @@ def nouveau_rapport():
                 travaux,
                 technicien,
                 commentaire,
-                reference
+                reference,
+                date_rapport
             )
-            VALUES (?, ?, ?, ?, ?, ?, ?)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
         """, (
             secteur_id,
             machine,
@@ -133,7 +196,8 @@ def nouveau_rapport():
             travaux,
             technicien,
             commentaire,
-            reference
+            reference,
+            date_rapport
         ))
 
         rapport_id = cursor.lastrowid
@@ -287,20 +351,65 @@ def modifier_rapport(rapport_id):
             secteurs = get_all_secteurs(conn)
             techniciens = get_all_techniciens(conn)
 
+        date_rapport_value = ""
+
+        if rapport["date_rapport"]:
+            try:
+                date_rapport_value = rapport["date_rapport"].strftime(
+                    "%Y-%m-%d"
+                )
+            except AttributeError:
+                date_rapport_value = str(
+                    rapport["date_rapport"]
+                )[:10]
+
         return render_template(
             "rapports/modifier.html",
             rapport=rapport,
             secteurs=secteurs,
-            techniciens=techniciens
+            techniciens=techniciens,
+            date_rapport_value=date_rapport_value
         )
 
-    secteur_id = request.form.get("secteur_id", "").strip()
-    machine = request.form.get("machine", "").strip()
-    probleme = request.form.get("probleme", "").strip()
-    travaux = request.form.get("travaux", "").strip()
-    technicien = request.form.get("technicien", "").strip()
-    commentaire = request.form.get("commentaire", "").strip()
-    reference = request.form.get("reference", "").strip()
+    date_rapport_raw = request.form.get(
+        "date_rapport",
+        ""
+    ).strip()
+
+    secteur_id = request.form.get(
+        "secteur_id",
+        ""
+    ).strip()
+
+    machine = request.form.get(
+        "machine",
+        ""
+    ).strip()
+
+    probleme = request.form.get(
+        "probleme",
+        ""
+    ).strip()
+
+    travaux = request.form.get(
+        "travaux",
+        ""
+    ).strip()
+
+    technicien = request.form.get(
+        "technicien",
+        ""
+    ).strip()
+
+    commentaire = request.form.get(
+        "commentaire",
+        ""
+    ).strip()
+
+    reference = request.form.get(
+        "reference",
+        ""
+    ).strip()
 
     with connexion_db() as conn:
         rapport = get_rapport(conn, rapport_id)
@@ -312,6 +421,7 @@ def modifier_rapport(rapport_id):
         techniciens = get_all_techniciens(conn)
 
     if not all([
+        date_rapport_raw,
         secteur_id,
         machine,
         probleme,
@@ -324,10 +434,31 @@ def modifier_rapport(rapport_id):
                 rapport=rapport,
                 secteurs=secteurs,
                 techniciens=techniciens,
+                date_rapport_value=date_rapport_raw,
                 erreur=(
-                    "Le secteur, la machine, le problème, "
-                    "les travaux et le technicien sont obligatoires."
+                    "La date, le secteur, la machine, "
+                    "le problème, les travaux et le "
+                    "technicien sont obligatoires."
                 )
+            ),
+            400
+        )
+
+    try:
+        date_rapport = datetime.strptime(
+            date_rapport_raw,
+            "%Y-%m-%d"
+        )
+
+    except ValueError:
+        return (
+            render_template(
+                "rapports/modifier.html",
+                rapport=rapport,
+                secteurs=secteurs,
+                techniciens=techniciens,
+                date_rapport_value=date_rapport_raw,
+                erreur="La date du rapport est invalide."
             ),
             400
         )
@@ -342,7 +473,8 @@ def modifier_rapport(rapport_id):
                 travaux = ?,
                 technicien = ?,
                 commentaire = ?,
-                reference = ?
+                reference = ?,
+                date_rapport = ?
             WHERE id = ?
         """, (
             secteur_id,
@@ -352,6 +484,7 @@ def modifier_rapport(rapport_id):
             technicien,
             commentaire,
             reference,
+            date_rapport,
             rapport_id
         ))
 
@@ -368,7 +501,6 @@ def modifier_rapport(rapport_id):
             rapport_id=rapport_id
         )
     )
-
 
 # -------------------------------------------------------------------
 # Suppression d'un rapport

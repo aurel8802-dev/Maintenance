@@ -14,6 +14,18 @@
 
     <form method="POST" enctype="multipart/form-data" class="form">
 
+        <label for="date_rapport">
+            Date du rapport
+        </label>
+
+        <input
+            type="date"
+            id="date_rapport"
+            name="date_rapport"
+            value="{{ date_rapport_value }}"
+            required
+        >
+
         <label>Secteur</label>
         <select name="secteur_id" required>
             {% for secteur in secteurs %}
@@ -110,34 +122,4 @@ function updateFileName(input) {
     }
 }
 </script>
-
-<div class="autocomplete-field">
-    <label for="technicien">Nom du technicien</label>
-
-    <input
-        type="text"
-        id="technicien"
-        name="technicien"
-        value="{{ rapport.technicien }}"
-        placeholder="Rechercher ou saisir un technicien"
-        autocomplete="off"
-        required
-    >
-
-    <div
-        id="technicienSuggestions"
-        class="autocomplete-suggestions"
-    >
-        {% for technicien in techniciens %}
-            <button
-                type="button"
-                class="autocomplete-option"
-                data-value="{{ technicien }}"
-            >
-                {{ technicien }}
-            </button>
-        {% endfor %}
-    </div>
-</div>
-
 {% endblock %}
