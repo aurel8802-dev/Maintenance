@@ -68,9 +68,9 @@ def get_all_secteurs(conn):
     return conn.execute("""
         SELECT *
         FROM secteurs
-        WHERE actif = ?
+        WHERE actif = TRUE
         ORDER BY nom
-    """, (1,)).fetchall()
+    """).fetchall()
 
 
 # -------------------------------------------------------------------

@@ -184,6 +184,7 @@ def gerer_secteurs():
         secteurs = conn.execute("""
             SELECT *
             FROM secteurs
+            WHERE actif = TRUE
             ORDER BY nom
         """).fetchall()
 
@@ -492,9 +493,9 @@ def gerer_machines():
         secteurs = conn.execute("""
             SELECT *
             FROM secteurs
-            WHERE actif = ?
+            WHERE actif = TRUE
             ORDER BY nom
-        """, (1,)).fetchall()
+        """).fetchall()
 
         machines = conn.execute("""
             SELECT
@@ -503,9 +504,9 @@ def gerer_machines():
             FROM machines
             JOIN secteurs
                 ON machines.secteur_id = secteurs.id
-            WHERE machines.actif = ?
+            WHERE machines.actif = TRUE
             ORDER BY secteurs.nom, machines.nom
-        """, (1,)).fetchall()
+        """).fetchall()
 
     return render_template(
         "parametres/machines.html",

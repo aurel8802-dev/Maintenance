@@ -44,9 +44,9 @@ def get_all_secteurs(conn):
     return conn.execute("""
         SELECT *
         FROM secteurs
-        WHERE actif = ?
+        WHERE actif = TRUE
         ORDER BY nom
-    """, (1,)).fetchall()
+    """).fetchall()
 
 
 def get_rapport(conn, rapport_id):
@@ -89,8 +89,8 @@ def nouveau_rapport():
             "rapports/nouveau.html",
             secteurs=secteurs,
             techniciens=techniciens,
-            date_du_jour=date.today().isoformat(),
-            machines=machines
+            machines=machines,
+            date_du_jour=date.today().isoformat()
         )
 
     date_rapport_raw = request.form.get(
@@ -144,12 +144,14 @@ def nouveau_rapport():
         with connexion_db() as conn:
             secteurs = get_all_secteurs(conn)
             techniciens = get_all_techniciens(conn)
+            machines = get_all_machines(conn)
 
         return (
             render_template(
                 "rapports/nouveau.html",
                 secteurs=secteurs,
                 techniciens=techniciens,
+                machines=machines,
                 date_du_jour=(
                     date_rapport_raw
                     or date.today().isoformat()
@@ -173,12 +175,14 @@ def nouveau_rapport():
         with connexion_db() as conn:
             secteurs = get_all_secteurs(conn)
             techniciens = get_all_techniciens(conn)
+            machines = get_all_machines(conn)
 
         return (
             render_template(
                 "rapports/nouveau.html",
                 secteurs=secteurs,
                 techniciens=techniciens,
+                machines=machines,
                 date_du_jour=date.today().isoformat(),
                 erreur="La date du rapport est invalide."
             ),
@@ -619,6 +623,6 @@ def get_all_machines(conn):
             nom,
             secteur_id
         FROM machines
-        WHERE actif = ?
+        WHERE actif = TRUE
         ORDER BY nom
-    """, (1,)).fetchall()
+    """).fetchall()
