@@ -615,10 +615,10 @@ def get_all_machines(conn):
     """Retourne uniquement les machines actives."""
     return conn.execute("""
         SELECT
-            machines.id,
-            machines.nom,
-            machines.secteur_id
+            id,
+            nom,
+            secteur_id
         FROM machines
-        WHERE machines.actif = ?
-        ORDER BY machines.nom
+        WHERE actif = ?
+        ORDER BY nom
     """, (1,)).fetchall()
