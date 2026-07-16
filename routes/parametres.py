@@ -204,36 +204,30 @@ def gerer_secteurs():
     )
 
 
-@parametres_bp.route(
-    "/parametres/secteurs/<int:secteur_id>/supprimer",
-    methods=["POST"]
-)
-@parametres_bp.route(
-    "/parametres/secteurs/<int:secteur_id>/supprimer",
-    methods=["POST"]
-)
-def supprimer_secteur(secteur_id):
-    with transaction_db() as conn:
-        secteur = conn.execute("""
-            SELECT id
-            FROM secteurs
-            WHERE id = ?
-        """, (secteur_id,)).fetchone()
 
-        if secteur is None:
-            return "Secteur introuvable.", 404
+@parametres_bp.route(
+    "/parametres/machines/<int:machine_id>/supprimer",
+    methods=["POST"]
+)
+def supprimer_machine(machine_id):
+    with transaction_db() as conn:
+        machine = conn.execute("""
+            SELECT id
+            FROM machines
+            WHERE id = ?
+        """, (machine_id,)).fetchone()
+
+        if machine is None:
+            return "Machine introuvable.", 404
 
         conn.execute("""
-            UPDATE secteurs
-            SET actif = ?
+            UPDATE machines
+            SET actif = FALSE
             WHERE id = ?
-        """, (
-            0,
-            secteur_id
-        ))
+        """, (machine_id,))
 
     return redirect(
-        url_for("parametres.gerer_secteurs")
+        url_for("parametres.gerer_machines")
     )
 
 
