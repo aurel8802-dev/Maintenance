@@ -65,12 +65,27 @@
         {% if photos %}
             <div class="photos-grid">
                 {% for photo in photos %}
-                    <img
-                        src="{{ url_for('uploaded_photo', filename=photo.nom_fichier) }}"
-                        alt="Photo rapport"
-                        class="photo-thumbnail"
-                        onclick="openImage(this.src)"
-                    >
+
+                    {% if photo.url_photo %}
+                        <img
+                            src="{{ photo.url_photo }}"
+                            alt="Photo rapport"
+                            class="photo-thumbnail"
+                            onclick="openImage(this.src)"
+                        >
+
+                    {% elif photo.nom_fichier %}
+                        <img
+                            src="{{ url_for(
+                                'uploaded_photo',
+                                filename=photo.nom_fichier
+                            ) }}"
+                            alt="Photo rapport"
+                            class="photo-thumbnail"
+                            onclick="openImage(this.src)"
+                        >
+                    {% endif %}
+
                 {% endfor %}
             </div>
         {% else %}
