@@ -111,6 +111,7 @@ def reset_donnees():
     "/parametres/secteurs",
     methods=["GET", "POST"]
 )
+
 def gerer_secteurs():
     message = None
     erreur = None
@@ -154,28 +155,28 @@ def gerer_secteurs():
                 if secteur_existant:
                     if secteur_existant["actif"]:
                         erreur = "Ce secteur existe déjà."
+
                     else:
                         conn.execute("""
                             UPDATE secteurs
-                            SET actif = ?
+                            SET actif = TRUE
                             WHERE id = ?
                         """, (
-                            1,
-                            secteur_existant["id"]
+                            secteur_existant["id"],
                         ))
 
                         conn.commit()
                         message = "Secteur réactivé."
+
                 else:
                     conn.execute("""
                         INSERT INTO secteurs (
                             nom,
                             actif
                         )
-                        VALUES (?, ?)
+                        VALUES (?, TRUE)
                     """, (
                         nom,
-                        1
                     ))
 
                     conn.commit()
