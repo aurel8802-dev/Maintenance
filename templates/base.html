@@ -50,14 +50,19 @@
         <div class="content-area">
 
             <header class="topbar">
-
                 <div>
-                    <h2>Tableau de bord</h2>
-                    <p>Gestion des demandes d'intervention</p>
+                    <h2>
+                        {% block page_title %}
+                            Tableau de bord
+                        {% endblock %}
+                    </h2>
+
+                    <p>
+                        {% block page_subtitle %}
+                            Gestion des demandes d'intervention
+                        {% endblock %}
+                    </p>
                 </div>
-
-                <a href="/demandes/nouvelle" class="btn">+ Nouvelle demande</a>
-
             </header>
 
             <main>
