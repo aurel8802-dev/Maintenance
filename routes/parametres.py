@@ -532,3 +532,60 @@ def gerer_machines():
         message=message,
         erreur=erreur
     )
+
+@parametres_bp.route(
+    "/parametres/secteurs/<int:secteur_id>/modifier",
+    methods=["POST"]
+)
+def modifier_secteur(secteur_id):
+
+    nouveau_nom = request.form.get("nom", "").strip()
+
+    if not nouveau_nom:
+        return redirect(
+            url_for("parametres.gerer_secteurs")
+        )
+
+    try:
+        with transaction_db() as conn:
+
+            # Vérifier que le secteur existe
+            secteur = conn.execute(
+                """
+                SELECT id, nom
+                FROM secteurs
+                WHERE id = ?
+                """,
+                (secteur_id,)
+            ).fetchone()
+
+            if not secteur:
+                return "Secteur introuvable", 404
+
+            # Modifier directement le nom
+            conn.execute(
+                """
+                UPDATE secteurs
+                SET nom = ?
+                WHERE id = ?
+                """,
+                (
+                    nouveau_nom,
+                    secteur_id
+                )
+            )
+
+            print(
+                f"Secteur {secteur_id} renommé en : "
+                f"{nouveau_nom}"
+            )
+
+    except Exception as e:
+        print(
+            "ERREUR modification secteur :",
+            e
+        )
+
+    return redirect(
+        url_for("parametres.gerer_secteurs")
+    )

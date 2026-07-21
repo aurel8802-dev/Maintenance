@@ -1269,3 +1269,51 @@ form.filters-bar .btn-secondary {
     background: #b91c1c;
     transform: scale(1.06);
 }
+
+/* Formulaire modification secteur */
+
+.sector-edit-form {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+}
+
+.sector-edit-form input[type="text"] {
+    min-width: 220px;
+    height: 42px;
+    padding: 0 12px;
+
+    border: 1px solid #d1d5db;
+    border-radius: 10px;
+
+    font-size: 14px;
+    background: #ffffff;
+
+    transition: border-color 0.2s ease,
+                box-shadow 0.2s ease;
+}
+
+.sector-edit-form input[type="text"]:focus {
+    outline: none;
+
+    border-color: #2563eb;
+
+    box-shadow:
+        0 0 0 3px rgba(37, 99, 235, 0.12);
+}
+
+.sector-edit-form .btn,
+.sector-edit-form .btn-secondary {
+    height: 42px;
+
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+
+    padding: 0 16px;
+
+    border-radius: 10px;
+
+    white-space: nowrap;
+}

@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+
 {% block page_title %}
 Gestion des secteurs
 {% endblock %}
@@ -6,44 +7,83 @@ Gestion des secteurs
 {% block page_subtitle %}
 Ajouter et administrer les secteurs
 {% endblock %}
+
 {% block content %}
 
 <section class="card">
+
     <div class="section-header">
         <div>
             <h2>🏭 Secteurs</h2>
             <p>Gestion des secteurs disponibles.</p>
         </div>
 
-        <a href="/parametres" class="btn-secondary">← Retour</a>
+        <a href="/parametres" class="btn-secondary">
+            ← Retour
+        </a>
     </div>
 
+
     {% if erreur %}
-        <p class="warning-text">{{ erreur }}</p>
+        <p class="warning-text">
+            {{ erreur }}
+        </p>
     {% endif %}
+
 
     {% if message %}
-        <p class="success-text">{{ message }}</p>
+        <p class="success-text">
+            {{ message }}
+        </p>
     {% endif %}
 
-    <form method="POST" class="form">
-        <label>Nouveau secteur</label>
-        <input type="text" name="nom" placeholder="Ex : Hall 3" required>
 
-        <button type="submit" class="btn">Ajouter le secteur</button>
+    <!-- Ajouter un nouveau secteur -->
+
+    <form method="POST" class="form">
+
+        <label>
+            Nouveau secteur
+        </label>
+
+        <input
+            type="text"
+            name="nom"
+            placeholder="Ex : Hall 3"
+            required
+        >
+
+        <button
+            type="submit"
+            class="btn"
+        >
+            Ajouter le secteur
+        </button>
+
     </form>
+
 
     <hr>
 
+
+    <!-- Nettoyage automatique -->
+
     <div class="sector-cleanup">
-    <div>
-        <strong>Nettoyage automatique</strong>
-        <p>
-            Fusionne les doublons, uniformise les noms et supprime
-            le secteur « Non renseigné », sans perdre les demandes
-            ni les rapports associés.
-        </p>
-    </div>
+
+        <div>
+
+            <strong>
+                Nettoyage automatique
+            </strong>
+
+            <p>
+                Fusionne les doublons, uniformise les noms
+                et supprime le secteur « Non renseigné »,
+                sans perdre les demandes ni les rapports associés.
+            </p>
+
+        </div>
+
 
         <form
             method="POST"
@@ -52,29 +92,124 @@ Ajouter et administrer les secteurs
                 'Nettoyer et fusionner les secteurs en double ?'
             );"
         >
-            <button type="submit" class="btn-secondary">
+
+            <button
+                type="submit"
+                class="btn-secondary"
+            >
                 🧹 Nettoyer les secteurs
             </button>
+
         </form>
+
     </div>
 
-    <h3>Secteurs existants</h3>
+
+    <h3>
+        Secteurs existants
+    </h3>
+
 
     {% if secteurs %}
+
         <div class="table-container">
+
             <table class="modern-table">
+
                 <thead>
+
                     <tr>
-                        <th>Nom</th>
-                        <th style="width: 160px;">Actions</th>
+
+                        <th>
+                            Nom
+                        </th>
+
+                        <th style="width: 280px;">
+                            Actions
+                        </th>
+
                     </tr>
+
                 </thead>
 
+
                 <tbody>
+
                     {% for secteur in secteurs %}
+
                         <tr>
-                            <td>{{ secteur.nom }}</td>
+
+                            <!-- Nom -->
+
                             <td>
+
+                                <!-- Affichage normal -->
+
+                                <div
+                                    id="display-secteur-{{ secteur.id }}"
+                                >
+                                    {{ secteur.nom }}
+                                </div>
+
+
+                                <!-- Formulaire de modification -->
+
+                                <form
+                                    id="edit-secteur-{{ secteur.id }}"
+                                    method="POST"
+                                    action="{{ url_for(
+                                        'parametres.modifier_secteur',
+                                        secteur_id=secteur.id
+                                    ) }}"
+                                    class="sector-edit-form"
+                                    style="display: none;"
+                                >
+
+                                    <input
+                                        type="text"
+                                        name="nom"
+                                        value="{{ secteur.nom }}"
+                                        required
+                                    >
+
+
+                                    <button
+                                        type="submit"
+                                        class="btn"
+                                    >
+                                        💾 Enregistrer
+                                    </button>
+
+
+                                    <button
+                                        type="button"
+                                        class="btn-secondary"
+                                        data-cancel-edit
+                                        data-secteur-id="{{ secteur.id }}"
+                                    >
+                                        Annuler
+                                    </button>
+
+                                </form>
+
+                            </td>
+
+
+                            <!-- Actions -->
+
+                            <td>
+
+                                <button
+                                    type="button"
+                                    class="btn-secondary"
+                                    id="edit-button-{{ secteur.id }}"
+                                    data-edit-sector
+                                    data-secteur-id="{{ secteur.id }}"
+                                >
+                                    ✏️ Modifier
+                                </button>
+
+
                                 <button
                                     type="button"
                                     class="btn-danger"
@@ -87,18 +222,164 @@ Ajouter et administrer les secteurs
                                 >
                                     🗑️ Supprimer
                                 </button>
+
                             </td>
+
                         </tr>
+
                     {% endfor %}
+
                 </tbody>
+
             </table>
+
         </div>
+
+
     {% else %}
+
         <div class="empty-state">
-            <div class="icon">📭</div>
-            <p>Aucun secteur enregistré.</p>
+
+            <div class="icon">
+                📭
+            </div>
+
+            <p>
+                Aucun secteur enregistré.
+            </p>
+
         </div>
+
     {% endif %}
+
 </section>
+
+
+<script>
+
+document.addEventListener("DOMContentLoaded", function () {
+
+    /*
+        Boutons Modifier
+    */
+
+    document
+        .querySelectorAll("[data-edit-sector]")
+        .forEach(function (button) {
+
+            button.addEventListener("click", function () {
+
+                const id =
+                    this.dataset.secteurId;
+
+                editSecteur(id);
+
+            });
+
+        });
+
+
+    /*
+        Boutons Annuler
+    */
+
+    document
+        .querySelectorAll("[data-cancel-edit]")
+        .forEach(function (button) {
+
+            button.addEventListener("click", function () {
+
+                const id =
+                    this.dataset.secteurId;
+
+                cancelEditSecteur(id);
+
+            });
+
+        });
+
+});
+
+
+function editSecteur(id) {
+
+    const display =
+        document.getElementById(
+            "display-secteur-" + id
+        );
+
+    const form =
+        document.getElementById(
+            "edit-secteur-" + id
+        );
+
+    const button =
+        document.getElementById(
+            "edit-button-" + id
+        );
+
+
+    if (!display || !form || !button) {
+        return;
+    }
+
+
+    display.style.display = "none";
+
+    form.style.display = "flex";
+
+    button.style.display = "none";
+
+
+    const input =
+        form.querySelector(
+            'input[name="nom"]'
+        );
+
+
+    if (input) {
+
+        input.focus();
+
+        input.select();
+
+    }
+
+}
+
+
+function cancelEditSecteur(id) {
+
+    const display =
+        document.getElementById(
+            "display-secteur-" + id
+        );
+
+    const form =
+        document.getElementById(
+            "edit-secteur-" + id
+        );
+
+    const button =
+        document.getElementById(
+            "edit-button-" + id
+        );
+
+
+    if (!display || !form || !button) {
+        return;
+    }
+
+
+    display.style.display = "block";
+
+    form.style.display = "none";
+
+    button.style.display = "inline-block";
+
+}
+
+</script>
+
 
 {% endblock %}
