@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+
 {% block page_title %}
 Gestion des machines
 {% endblock %}
@@ -6,9 +7,11 @@ Gestion des machines
 {% block page_subtitle %}
 Ajouter et administrer les machines
 {% endblock %}
+
 {% block content %}
 
 <section class="card">
+
     <div class="section-header">
         <div>
             <h2>🏭 Machines</h2>
@@ -25,11 +28,13 @@ Ajouter et administrer les machines
         </a>
     </div>
 
+
     {% if erreur %}
         <div class="error-box">
             {{ erreur }}
         </div>
     {% endif %}
+
 
     {% if message %}
         <div class="success-text">
@@ -37,28 +42,38 @@ Ajouter et administrer les machines
         </div>
     {% endif %}
 
+
+    <!-- Ajouter une machine -->
+
     <form method="POST" class="form">
 
-    <select
-        name="secteur_id"
-        id="secteurMachine"
-        required
-    >
-        <option value="">
-            -- Choisir un secteur --
-        </option>
+        <label>Secteur</label>
 
-        {% for secteur in secteurs %}
-            <option
-                value="{{ secteur.id }}"
-                {% if secteur_selectionne == secteur.id|string %}
-                    selected
-                {% endif %}
-            >
-                {{ secteur.nom }}
+        <select
+            name="secteur_id"
+            id="secteurMachine"
+            required
+        >
+
+            <option value="">
+                -- Choisir un secteur --
             </option>
-        {% endfor %}
-    </select>
+
+            {% for secteur in secteurs %}
+
+                <option
+                    value="{{ secteur.id }}"
+                    {% if secteur_selectionne == secteur.id|string %}
+                        selected
+                    {% endif %}
+                >
+                    {{ secteur.nom }}
+                </option>
+
+            {% endfor %}
+
+        </select>
+
 
         <label>Nom de la machine</label>
 
@@ -69,36 +84,131 @@ Ajouter et administrer les machines
             required
         >
 
-        <button type="submit" class="btn">
+
+        <button
+            type="submit"
+            class="btn"
+        >
             Ajouter la machine
         </button>
+
     </form>
+
 
     <hr>
 
-    <h3>Machines enregistrées</h3>
+
+    <h3>
+        Machines enregistrées
+    </h3>
+
 
     {% if machines %}
+
         <div class="table-container">
+
             <table class="modern-table">
+
                 <thead>
+
                     <tr>
                         <th>Secteur</th>
                         <th>Machine</th>
-                        <th>Action</th>
+                        <th style="width: 280px;">
+                            Actions
+                        </th>
                     </tr>
+
                 </thead>
 
+
                 <tbody>
+
                     {% for machine in machines %}
+
                         <tr
                             class="machine-row"
                             data-secteur-id="{{ machine.secteur_id }}"
                         >
-                            <td>{{ machine.secteur_nom }}</td>
-                            <td>{{ machine.nom }}</td>
+
+                            <!-- Secteur -->
 
                             <td>
+                                {{ machine.secteur_nom }}
+                            </td>
+
+
+                            <!-- Machine -->
+
+                            <td>
+
+                                <!-- Affichage normal -->
+
+                                <div
+                                    id="display-machine-{{ machine.id }}"
+                                >
+                                    {{ machine.nom }}
+                                </div>
+
+
+                                <!-- Formulaire de modification -->
+
+                                <form
+                                    id="edit-machine-{{ machine.id }}"
+                                    method="POST"
+                                    action="{{ url_for(
+                                        'parametres.modifier_machine',
+                                        machine_id=machine.id
+                                    ) }}"
+                                    class="machine-edit-form"
+                                    style="display: none;"
+                                >
+
+                                    <input
+                                        type="text"
+                                        name="nom"
+                                        value="{{ machine.nom }}"
+                                        required
+                                    >
+
+
+                                    <button
+                                        type="submit"
+                                        class="btn"
+                                    >
+                                        ✓ Enregistrer
+                                    </button>
+
+
+                                    <button
+                                        type="button"
+                                        class="btn-secondary"
+                                        data-cancel-machine
+                                        data-machine-id="{{ machine.id }}"
+                                    >
+                                        Annuler
+                                    </button>
+
+                                </form>
+
+                            </td>
+
+
+                            <!-- Actions -->
+
+                            <td>
+
+                                <button
+                                    type="button"
+                                    class="btn-secondary"
+                                    id="edit-button-machine-{{ machine.id }}"
+                                    data-edit-machine
+                                    data-machine-id="{{ machine.id }}"
+                                >
+                                    ✏️ Modifier
+                                </button>
+
+
                                 <button
                                     type="button"
                                     class="btn-danger"
@@ -111,47 +221,258 @@ Ajouter et administrer les machines
                                 >
                                     🗑️ Supprimer
                                 </button>
+
                             </td>
+
                         </tr>
+
                     {% endfor %}
+
                 </tbody>
+
             </table>
+
         </div>
+
+
     {% else %}
-        <p>Aucune machine enregistrée.</p>
+
+        <div class="empty-state">
+
+            <div class="icon">
+                📭
+            </div>
+
+            <p>
+                Aucune machine enregistrée.
+            </p>
+
+        </div>
+
     {% endif %}
+
 </section>
 
-<script>
-document.addEventListener("DOMContentLoaded", function () {
-    const secteurSelect = document.getElementById("secteurMachine");
-    const machineRows = document.querySelectorAll(".machine-row");
 
-    if (!secteurSelect) {
+<script>
+
+document.addEventListener(
+    "DOMContentLoaded",
+    function () {
+
+        const secteurSelect =
+            document.getElementById(
+                "secteurMachine"
+            );
+
+        const machineRows =
+            document.querySelectorAll(
+                ".machine-row"
+            );
+
+
+        /*
+         * Filtre des machines par secteur
+         */
+
+        function filtrerMachines() {
+
+            if (!secteurSelect) {
+                return;
+            }
+
+            const secteurId =
+                secteurSelect.value;
+
+
+            machineRows.forEach(
+                function (row) {
+
+                    const correspond =
+                        secteurId
+                        &&
+                        row.dataset.secteurId
+                            === secteurId;
+
+
+                    row.style.display =
+                        correspond
+                            ? ""
+                            : "none";
+
+                }
+            );
+
+        }
+
+
+        if (secteurSelect) {
+
+            secteurSelect.addEventListener(
+                "change",
+                filtrerMachines
+            );
+
+            filtrerMachines();
+
+        }
+
+
+        /*
+         * Boutons Modifier
+         */
+
+        document
+            .querySelectorAll(
+                "[data-edit-machine]"
+            )
+            .forEach(
+                function (button) {
+
+                    button.addEventListener(
+                        "click",
+                        function () {
+
+                            const id =
+                                this.dataset
+                                    .machineId;
+
+                            editMachine(id);
+
+                        }
+                    );
+
+                }
+            );
+
+
+        /*
+         * Boutons Annuler
+         */
+
+        document
+            .querySelectorAll(
+                "[data-cancel-machine]"
+            )
+            .forEach(
+                function (button) {
+
+                    button.addEventListener(
+                        "click",
+                        function () {
+
+                            const id =
+                                this.dataset
+                                    .machineId;
+
+                            cancelEditMachine(id);
+
+                        }
+                    );
+
+                }
+            );
+
+    }
+);
+
+
+function editMachine(id) {
+
+    const display =
+        document.getElementById(
+            "display-machine-" + id
+        );
+
+    const form =
+        document.getElementById(
+            "edit-machine-" + id
+        );
+
+    const button =
+        document.getElementById(
+            "edit-button-machine-" + id
+        );
+
+
+    if (
+        !display
+        ||
+        !form
+        ||
+        !button
+    ) {
         return;
     }
 
-    function filtrerMachines() {
-        const secteurId = secteurSelect.value;
 
-        machineRows.forEach(function (row) {
-            const correspond = (
-                secteurId
-                && row.dataset.secteurId === secteurId
-            );
+    display.style.display =
+        "none";
 
-            row.style.display = correspond ? "" : "none";
-        });
+    form.style.display =
+        "flex";
+
+    button.style.display =
+        "none";
+
+
+    const input =
+        form.querySelector(
+            'input[name="nom"]'
+        );
+
+
+    if (input) {
+
+        input.focus();
+
+        input.select();
+
     }
 
-    secteurSelect.addEventListener("change", filtrerMachines);
+}
 
-    /*
-     * Au chargement, aucune machine n'est affichée
-     * tant qu'aucun secteur n'est choisi.
-     */
-    filtrerMachines();
-});
+
+function cancelEditMachine(id) {
+
+    const display =
+        document.getElementById(
+            "display-machine-" + id
+        );
+
+    const form =
+        document.getElementById(
+            "edit-machine-" + id
+        );
+
+    const button =
+        document.getElementById(
+            "edit-button-machine-" + id
+        );
+
+
+    if (
+        !display
+        ||
+        !form
+        ||
+        !button
+    ) {
+        return;
+    }
+
+
+    display.style.display =
+        "block";
+
+    form.style.display =
+        "none";
+
+    button.style.display =
+        "inline-block";
+
+}
+
 </script>
 
 {% endblock %}

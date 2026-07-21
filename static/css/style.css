@@ -1317,3 +1317,70 @@ form.filters-bar .btn-secondary {
 
     white-space: nowrap;
 }
+
+/* Colonne travaux réalisés dans la liste des rapports */
+
+.travaux-cell {
+    max-width: 420px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+/* Formulaire modification machine */
+
+.machine-edit-form {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+}
+
+.machine-edit-form input[type="text"] {
+    min-width: 220px;
+    height: 42px;
+    padding: 0 12px;
+
+    border: 1px solid #d1d5db;
+    border-radius: 10px;
+
+    font-size: 14px;
+    background: #ffffff;
+
+    transition:
+        border-color 0.2s ease,
+        box-shadow 0.2s ease;
+}
+
+.machine-edit-form input[type="text"]:focus {
+    outline: none;
+    border-color: #2563eb;
+
+    box-shadow:
+        0 0 0 3px rgba(37, 99, 235, 0.12);
+}
+
+.machine-edit-form .btn,
+.machine-edit-form .btn-secondary {
+    height: 42px;
+
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+
+    padding: 0 16px;
+
+    border-radius: 10px;
+
+    white-space: nowrap;
+}
+
+.machine-edit-form .btn-secondary {
+    background: #f3f4f6;
+    color: #374151;
+    border: 1px solid #e5e7eb;
+}
+
+.machine-edit-form .btn-secondary:hover {
+    background: #e5e7eb;
+}

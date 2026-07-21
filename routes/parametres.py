@@ -233,32 +233,125 @@ def supprimer_secteur(secteur_id):
     "/parametres/machines/<int:machine_id>/supprimer",
     methods=["POST"]
 )
+
+@parametres_bp.route(
+    "/parametres/machines/<int:machine_id>/modifier",
+    methods=["POST"]
+)
+def modifier_machine(machine_id):
+
+    nouveau_nom = request.form.get("nom", "").strip()
+
+    if not nouveau_nom:
+        return redirect(
+            url_for("parametres.gerer_machines")
+        )
+
+    try:
+        with transaction_db() as conn:
+
+            machine = conn.execute("""
+                SELECT id, nom, secteur_id
+                FROM machines
+                WHERE id = ?
+                  AND actif = TRUE
+            """, (
+                machine_id,
+            )).fetchone()
+
+            if machine is None:
+                return "Machine introuvable.", 404
+
+
+            doublon = conn.execute("""
+                SELECT id
+                FROM machines
+                WHERE LOWER(TRIM(nom)) = LOWER(TRIM(?))
+                  AND secteur_id = ?
+                  AND id != ?
+                  AND actif = TRUE
+                LIMIT 1
+            """, (
+                nouveau_nom,
+                machine["secteur_id"],
+                machine_id
+            )).fetchone()
+
+
+            if doublon:
+                return redirect(
+                    url_for(
+                        "parametres.gerer_machines",
+                        secteur_id=machine["secteur_id"]
+                    )
+                )
+
+
+            conn.execute("""
+                UPDATE machines
+                SET nom = ?
+                WHERE id = ?
+            """, (
+                nouveau_nom,
+                machine_id
+            ))
+
+
+        return redirect(
+            url_for(
+                "parametres.gerer_machines",
+                secteur_id=machine["secteur_id"]
+            )
+        )
+
+
+    except Exception as error:
+
+        print(
+            "Erreur modification machine :",
+            error
+        )
+
+        return redirect(
+            url_for("parametres.gerer_machines")
+        )
+
+
+
+@parametres_bp.route(
+    "/parametres/machines/<int:machine_id>/supprimer",
+    methods=["POST"]
+)
 def supprimer_machine(machine_id):
+
     with transaction_db() as conn:
+
         machine = conn.execute("""
             SELECT id
             FROM machines
             WHERE id = ?
-        """, (machine_id,)).fetchone()
+        """, (
+            machine_id,
+        )).fetchone()
+
 
         if machine is None:
             return "Machine introuvable.", 404
+
 
         conn.execute("""
             UPDATE machines
             SET actif = FALSE
             WHERE id = ?
-        """, (machine_id,))
+        """, (
+            machine_id,
+        ))
+
 
     return redirect(
         url_for("parametres.gerer_machines")
     )
 
-
-@parametres_bp.route(
-    "/parametres/secteurs/nettoyer",
-    methods=["POST"]
-)
 def nettoyer_secteurs():
     conn = get_db_connection()
 
@@ -436,8 +529,12 @@ def supprimer_technicien(technicien_id):
 def gerer_machines():
     message = None
     erreur = None
-    secteur_selectionne = ""
 
+    secteur_selectionne = request.args.get(
+        "secteur_id",
+        ""
+    ).strip()
+    
     if request.method == "POST":
         secteur_selectionne = request.form.get(
             "secteur_id",

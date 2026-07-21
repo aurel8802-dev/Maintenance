@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+
 {% block page_title %}
 Rapports
 {% endblock %}
@@ -6,121 +7,286 @@ Rapports
 {% block page_subtitle %}
 Consulter les rapports d'intervention
 {% endblock %}
+
 {% block content %}
 
 <section class="card">
+
     <div class="section-header">
+
         <div>
             <h2>Rapports d'intervention</h2>
             <p>Liste complète des rapports enregistrés.</p>
         </div>
 
-        <a href="/rapports/nouveau" class="btn">+ Nouveau rapport</a>
+        <a href="/rapports/nouveau" class="btn">
+            + Nouveau rapport
+        </a>
+
     </div>
 
-<form
-    method="GET"
-    class="filters-bar"
-    id="filtersForm"
-    data-filters-form
-    data-storage-key="gm-rapports-filters"
->
-    <input
-        type="text"
-        name="recherche"
-        placeholder="Rechercher..."
-        value="{{ recherche }}"
+
+    <!-- Barre de recherche et filtres -->
+
+    <form
+        method="GET"
+        class="filters-bar"
+        id="filtersForm"
+        data-filters-form
+        data-storage-key="gm-rapports-filters"
     >
 
-    <select name="secteur_id">
-        <option value="">Tous les secteurs</option>
+        <!-- Recherche -->
 
-        {% for secteur in secteurs %}
+        <input
+            type="text"
+            name="recherche"
+            placeholder="Rechercher..."
+            value="{{ recherche }}"
+        >
+
+
+        <!-- Filtre secteur -->
+
+        <select name="secteur_id">
+
+            <option value="">
+                Tous les secteurs
+            </option>
+
+            {% for secteur in secteurs %}
+
+                <option
+                    value="{{ secteur.id }}"
+                    {% if secteur_id == secteur.id|string %}
+                        selected
+                    {% endif %}
+                >
+                    {{ secteur.nom }}
+                </option>
+
+            {% endfor %}
+
+        </select>
+
+
+        <!-- Tri -->
+
+        <select name="tri">
+
             <option
-                value="{{ secteur.id }}"
-                {% if secteur_id == secteur.id|string %}
+                value="recent"
+                {% if tri == "recent" %}
                     selected
                 {% endif %}
             >
-                {{ secteur.nom }}
+                Plus récent
             </option>
-        {% endfor %}
-    </select>
 
-    <select name="tri">
-        <option value="recent" {% if tri == "recent" %}selected{% endif %}>
-            Plus récent
-        </option>
+            <option
+                value="ancien"
+                {% if tri == "ancien" %}
+                    selected
+                {% endif %}
+            >
+                Plus ancien
+            </option>
 
-        <option value="ancien" {% if tri == "ancien" %}selected{% endif %}>
-            Plus ancien
-        </option>
+            <option
+                value="secteur"
+                {% if tri == "secteur" %}
+                    selected
+                {% endif %}
+            >
+                Par secteur
+            </option>
 
-        <option value="secteur" {% if tri == "secteur" %}selected{% endif %}>
-            Par secteur
-        </option>
+            <option
+                value="technicien"
+                {% if tri == "technicien" %}
+                    selected
+                {% endif %}
+            >
+                Par technicien
+            </option>
 
-        <option value="technicien" {% if tri == "technicien" %}selected{% endif %}>
-            Par technicien
-        </option>
-    </select>
+        </select>
 
-    <a
-        href="{{ url_for('rapports.liste_rapports') }}"
-        class="btn-secondary"
-        data-reset-filters
-    >
-        Réinitialiser
-    </a>
-</form>
+
+        <!-- Réinitialisation -->
+
+        <a
+            href="{{ url_for('rapports.liste_rapports') }}"
+            class="btn-secondary"
+            data-reset-filters
+        >
+            Réinitialiser
+        </a>
+
+    </form>
+
+
+    <!-- Nombre de résultats -->
 
     <p class="result-count">
-        {{ rapports|length }} rapport{{ "s" if rapports|length > 1 else "" }} trouvé{{ "s" if rapports|length > 1 else "" }}
+
+        {{ rapports|length }}
+
+        rapport{{ "s" if rapports|length > 1 else "" }}
+
+        trouvé{{ "s" if rapports|length > 1 else "" }}
+
     </p>
 
+
+    <!-- Tableau des rapports -->
+
     {% if rapports %}
+
         <div class="table-container">
+
             <table class="modern-table">
+
                 <thead>
+
                     <tr>
-                        <th>Date</th>
-                        <th>Secteur</th>
-                        <th>Machine</th>
-                        <th>Technicien</th>
-                        <th>Référence</th>
+
+                        <th>
+                            Date
+                        </th>
+
+                        <th>
+                            Secteur
+                        </th>
+
+                        <th>
+                            Machine
+                        </th>
+
+                        <th>
+                            Technicien
+                        </th>
+
+                        <th>
+                            Travaux réalisés
+                        </th>
+
                     </tr>
+
                 </thead>
 
+
                 <tbody>
+
                     {% for rapport in rapports %}
-                    <tr class="clickable-row" onclick="window.location='/rapports/{{ rapport.id }}'">
-                        <td>{{ rapport.date_rapport|date_fr }}</td>
-                        <td>{{ rapport.secteur_nom or "Non renseigné" }}</td>
-                        <td>{{ rapport.machine }}</td>
-                        <td>{{ rapport.technicien }}</td>
-                        <td>{{ rapport.reference or "-" }}</td>
-                    </tr>
+
+                        <tr
+                            class="clickable-row"
+                            onclick="window.location='/rapports/{{ rapport.id }}'"
+                        >
+
+                            <!-- Date -->
+
+                            <td>
+                                {{ rapport.date_rapport|date_fr }}
+                            </td>
+
+
+                            <!-- Secteur -->
+
+                            <td>
+                                {{ rapport.secteur_nom or "Non renseigné" }}
+                            </td>
+
+
+                            <!-- Machine -->
+
+                            <td>
+                                {{ rapport.machine or "-" }}
+                            </td>
+
+
+                            <!-- Technicien -->
+
+                            <td>
+                                {{ rapport.technicien or "-" }}
+                            </td>
+
+
+                            <!-- Travaux réalisés -->
+
+                            <td
+                                class="travaux-cell"
+                                title="{{ rapport.travaux or '' }}"
+                            >
+
+                                {% if rapport.travaux %}
+
+                                    {{ rapport.travaux[:100] }}
+
+                                    {% if rapport.travaux|length > 100 %}
+                                        …
+                                    {% endif %}
+
+                                {% else %}
+
+                                    -
+
+                                {% endif %}
+
+                            </td>
+
+                        </tr>
+
                     {% endfor %}
+
                 </tbody>
+
             </table>
+
         </div>
+
+
     {% else %}
+
         <div class="empty-state">
-            <div class="icon">📭</div>
-            <p>Aucun rapport enregistré.</p>
+
+            <div class="icon">
+                📭
+            </div>
+
+            <p>
+                Aucun rapport enregistré.
+            </p>
+
         </div>
+
     {% endif %}
+
 </section>
 
+
 <script>
+
 let searchTimer;
 
 function submitFiltersDelayed() {
+
     clearTimeout(searchTimer);
-    searchTimer = setTimeout(function () {
-        document.getElementById("filtersForm").submit();
-    }, 500);
+
+    searchTimer = setTimeout(
+        function () {
+
+            document
+                .getElementById("filtersForm")
+                .submit();
+
+        },
+        500
+    );
+
 }
+
 </script>
 
 {% endblock %}
