@@ -1,0 +1,26 @@
+{% extends "base.html" %}
+
+{% block content %}
+
+<section class="card danger-zone">
+    <h2>Supprimer cette demande ?</h2>
+
+    <p class="warning-text">
+        Cette action est irréversible.
+    </p>
+
+    <div class="delete-summary">
+        <p><strong>Numéro :</strong> DI-{{ "%05d"|format(demande.id) }}</p>
+        <p><strong>Date :</strong> {{ demande.date_creation|date_fr }}</p>
+        <p><strong>Demande :</strong> {{ demande.nature_travaux }}</p>
+        <p><strong>Secteur :</strong> {{ demande.secteur_nom or "Non renseigné" }}</p>
+        <p><strong>Demandeur :</strong> {{ demande.demandeur_nom or "Non renseigné" }}</p>
+    </div>
+
+    <form method="POST" class="delete-actions">
+        <a href="/demandes/{{ demande.id }}" class="btn-secondary">Annuler</a>
+        <button type="submit" class="btn-danger">Supprimer définitivement</button>
+    </form>
+</section>
+
+{% endblock %}

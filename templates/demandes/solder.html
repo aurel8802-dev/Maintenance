@@ -1,0 +1,31 @@
+{% extends "base.html" %}
+
+{% block content %}
+
+<section class="card">
+    <div class="section-header">
+        <div>
+            <h2>Solder la demande</h2>
+            <p>DI-{{ "%05d"|format(demande.id) }} — {{ demande.nature_travaux }}</p>
+        </div>
+
+        <a href="/demandes/{{ demande.id }}" class="btn-secondary">← Retour</a>
+    </div>
+
+    <form method="POST" class="form">
+
+        <label>Soldé par</label>
+        <input type="text" name="solde_par" required>
+
+        <label>Référence pièce remplacée</label>
+        <input type="text" name="reference_piece">
+
+        <label>Commentaire</label>
+        <textarea name="commentaire_solde" rows="5"></textarea>
+
+        <button type="submit" class="btn">Valider le solde</button>
+
+    </form>
+</section>
+
+{% endblock %}

@@ -1,0 +1,29 @@
+Phase 1 - Les bases
+✅ Créer le serveur Flask
+✅ Interface moderne
+✅ Barre de navigation
+✅ Base de données SQLite
+
+Phase 2 - Les demandes
+✅Ajouter une demande
+✅Modifier une demande
+✅Supprimer une demande
+Marquer "Soldé"
+
+Phase 3 - Les améliorations
+✅Recherche
+✅Filtres
+✅Tri
+Photos
+Historique
+
+Phase 4 - Le confort
+Tableau de bord
+Statistiques
+Export Excel
+Sauvegardes
+
+Phase 5 - La mise en ligne
+Hébergement
+Nom de domaine
+Accès depuis le téléphone de ton père

@@ -1,0 +1,1018 @@
+{% extends "base.html" %}
+
+{% block page_title %}Agenda{% endblock %}
+{% block page_subtitle %}Planification des tâches de maintenance{% endblock %}
+
+{% block content %}
+
+{% set couleurs = [
+    ("#2563eb", "Bleu"),
+    ("#16a34a", "Vert"),
+    ("#eab308", "Jaune"),
+    ("#f97316", "Orange"),
+    ("#dc2626", "Rouge"),
+    ("#9333ea", "Violet")
+] %}
+
+<link
+    href="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.15/index.global.min.css"
+    rel="stylesheet"
+>
+
+<div class="card">
+    <div class="section-header">
+        <div>
+            <h2>📅 Agenda</h2>
+            <p>
+                Cliquez sur une date pour ajouter une tâche
+                ou sur une tâche pour la modifier.
+            </p>
+        </div>
+
+        <button type="button" class="btn" id="nouvelle-tache">
+            + Nouvelle tâche
+        </button>
+    </div>
+
+    <div id="calendar"></div>
+</div>
+
+<div class="agenda-modal-overlay" id="agenda-modal" hidden>
+    <div class="agenda-modal">
+        <div class="agenda-modal-header">
+            <div>
+                <h2>Nouvelle tâche</h2>
+                <p>Ajoutez une tâche dans l’agenda.</p>
+            </div>
+
+            <button
+                type="button"
+                class="agenda-modal-close"
+                id="fermer-modal"
+                aria-label="Fermer"
+            >
+                ×
+            </button>
+        </div>
+
+        <form
+            action="{{ url_for('agenda.ajouter_tache') }}"
+            method="POST"
+            class="agenda-form"
+            id="form-ajout"
+        >
+            <div class="form-group">
+                <label for="titre">Titre de la tâche</label>
+                <input
+                    type="text"
+                    id="titre"
+                    name="titre"
+                    placeholder="Exemple : Vérifier le pont n°2"
+                    maxlength="200"
+                    required
+                >
+            </div>
+
+            <div class="agenda-date-grid">
+                <div class="form-group">
+                    <label for="date_tache">Date de début</label>
+                    <input
+                        type="date"
+                        id="date_tache"
+                        name="date_tache"
+                        required
+                    >
+                </div>
+
+                <div class="form-group">
+                    <label for="date_fin">
+                        Date de fin
+                        <span class="optional">Facultatif</span>
+                    </label>
+                    <input
+                        type="date"
+                        id="date_fin"
+                        name="date_fin"
+                    >
+                </div>
+            </div>
+
+            <div class="agenda-date-grid">
+                <div class="form-group">
+                    <label for="heure_tache">
+                        Heure
+                        <span class="optional">Facultatif</span>
+                    </label>
+                    <input
+                        type="time"
+                        id="heure_tache"
+                        name="heure_tache"
+                    >
+                </div>
+
+                <div class="form-group">
+                    <label>Couleur de l’événement</label>
+
+                    <div class="agenda-color-picker">
+                        {% for valeur, nom in couleurs %}
+                            <label
+                                class="agenda-color-option"
+                                title="{{ nom }}"
+                            >
+                                <input
+                                    type="radio"
+                                    name="couleur"
+                                    value="{{ valeur }}"
+                                    {% if loop.first %}checked{% endif %}
+                                >
+                                <span
+                                    class="agenda-color-swatch"
+                                    style="--event-color: {{ valeur }};"
+                                ></span>
+                                <span class="sr-only">{{ nom }}</span>
+                            </label>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label for="repetition">
+                    Répétition
+                </label>
+
+                <select
+                    id="repetition"
+                    name="repetition"
+                    required
+                >
+                    <option value="aucune">
+                        Aucune répétition
+                    </option>
+                    <option value="quotidienne">
+                        Tous les jours
+                    </option>
+                    <option value="hebdomadaire">
+                        Toutes les semaines
+                    </option>
+                    <option value="mensuelle">
+                        Tous les mois
+                    </option>
+                    <option value="annuelle">
+                        Tous les ans
+                    </option>
+                </select>
+
+                <p class="agenda-field-help">
+                    La prochaine tâche sera créée automatiquement
+                    lorsque celle-ci sera soldée.
+                </p>
+            </div>
+
+            <div class="form-group">
+                <label for="secteur_id">
+                    Secteur
+                    <span class="optional">Facultatif</span>
+                </label>
+                <select id="secteur_id" name="secteur_id">
+                    <option value="0">Aucun secteur</option>
+                    {% for secteur in secteurs %}
+                        <option value="{{ secteur.id }}">
+                            {{ secteur.nom }}
+                        </option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label for="demande_par">Demandée par</label>
+                <input
+                    type="text"
+                    id="demande_par"
+                    name="demande_par"
+                    placeholder="Nom de la personne"
+                    maxlength="200"
+                    required
+                >
+            </div>
+
+            <div class="form-group">
+                <label for="description">
+                    Description
+                    <span class="optional">Facultatif</span>
+                </label>
+                <textarea
+                    id="description"
+                    name="description"
+                    rows="5"
+                    placeholder="Informations complémentaires..."
+                ></textarea>
+            </div>
+
+            <div class="agenda-form-error" id="erreur-ajout" hidden></div>
+
+            <div class="agenda-form-actions">
+                <button
+                    type="button"
+                    class="btn-secondary"
+                    id="annuler-tache"
+                >
+                    Annuler
+                </button>
+
+                <button type="submit" class="btn">
+                    ✓ Enregistrer
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<div class="agenda-modal-overlay" id="modal-modification" hidden>
+    <div class="agenda-modal">
+        <div class="agenda-modal-header">
+            <div>
+                <h2>Modifier la tâche</h2>
+                <p>Consultez ou modifiez cette tâche.</p>
+            </div>
+
+            <button
+                type="button"
+                class="agenda-modal-close"
+                id="fermer-modal-modification"
+                aria-label="Fermer"
+            >
+                ×
+            </button>
+        </div>
+
+        <form method="POST" id="form-modification" class="agenda-form">
+            <div class="form-group">
+                <label for="modifier-titre">Titre de la tâche</label>
+                <input
+                    type="text"
+                    id="modifier-titre"
+                    name="titre"
+                    maxlength="200"
+                    required
+                >
+            </div>
+
+            <div class="agenda-date-grid">
+                <div class="form-group">
+                    <label for="modifier-date">Date de début</label>
+                    <input
+                        type="date"
+                        id="modifier-date"
+                        name="date_tache"
+                        required
+                    >
+                </div>
+
+                <div class="form-group">
+                    <label for="modifier-date-fin">
+                        Date de fin
+                        <span class="optional">Facultatif</span>
+                    </label>
+                    <input
+                        type="date"
+                        id="modifier-date-fin"
+                        name="date_fin"
+                    >
+                </div>
+            </div>
+
+            <div class="agenda-date-grid">
+                <div class="form-group">
+                    <label for="modifier-heure">
+                        Heure
+                        <span class="optional">Facultatif</span>
+                    </label>
+                    <input
+                        type="time"
+                        id="modifier-heure"
+                        name="heure_tache"
+                    >
+                </div>
+
+                <div class="form-group">
+                    <label>Couleur de l’événement</label>
+
+                    <div class="agenda-color-picker">
+                        {% for valeur, nom in couleurs %}
+                            <label
+                                class="agenda-color-option"
+                                title="{{ nom }}"
+                            >
+                                <input
+                                    type="radio"
+                                    name="couleur"
+                                    value="{{ valeur }}"
+                                    class="modifier-couleur"
+                                >
+                                <span
+                                    class="agenda-color-swatch"
+                                    style="--event-color: {{ valeur }};"
+                                ></span>
+                                <span class="sr-only">{{ nom }}</span>
+                            </label>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label for="modifier-repetition">
+                    Répétition
+                </label>
+
+                <select
+                    id="modifier-repetition"
+                    name="repetition"
+                    required
+                >
+                    <option value="aucune">
+                        Aucune répétition
+                    </option>
+                    <option value="quotidienne">
+                        Tous les jours
+                    </option>
+                    <option value="hebdomadaire">
+                        Toutes les semaines
+                    </option>
+                    <option value="mensuelle">
+                        Tous les mois
+                    </option>
+                    <option value="annuelle">
+                        Tous les ans
+                    </option>
+                </select>
+
+                <p class="agenda-field-help">
+                    La prochaine tâche sera créée automatiquement
+                    lorsque celle-ci sera soldée.
+                </p>
+            </div>
+
+            <div class="form-group">
+                <label for="modifier-secteur">
+                    Secteur
+                    <span class="optional">Facultatif</span>
+                </label>
+                <select
+                    id="modifier-secteur"
+                    name="secteur_id"
+                >
+                    <option value="0">Aucun secteur</option>
+                    {% for secteur in secteurs %}
+                        <option value="{{ secteur.id }}">
+                            {{ secteur.nom }}
+                        </option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label for="modifier-demande-par">Demandée par</label>
+                <input
+                    type="text"
+                    id="modifier-demande-par"
+                    name="demande_par"
+                    maxlength="200"
+                    required
+                >
+            </div>
+
+            <div class="form-group">
+                <label for="modifier-description">
+                    Description
+                    <span class="optional">Facultatif</span>
+                </label>
+                <textarea
+                    id="modifier-description"
+                    name="description"
+                    rows="5"
+                    placeholder="Informations complémentaires..."
+                ></textarea>
+            </div>
+
+            <div
+                class="agenda-form-error"
+                id="erreur-modification"
+                hidden
+            ></div>
+
+            <div class="agenda-form-actions">
+                <button
+                    type="button"
+                    class="btn-secondary"
+                    id="annuler-modification"
+                >
+                    Annuler
+                </button>
+
+                <button type="submit" class="btn">
+                    ✓ Enregistrer les modifications
+                </button>
+            </div>
+        </form>
+
+        <div class="agenda-status-section">
+            <form method="POST" id="form-statut" class="agenda-status-form">
+                <div class="agenda-info-solde" id="info-solde" hidden>
+                    <div class="agenda-info-solde-icon">✓</div>
+                    <div>
+                        <div class="agenda-info-solde-title">
+                            Tâche soldée
+                        </div>
+                        <div class="agenda-info-solde-personne">
+                            Soldée par :
+                            <strong id="info-solde-par">-</strong>
+                        </div>
+                    </div>
+                </div>
+
+                <div
+                    class="agenda-solde-input-zone"
+                    id="zone-saisie-solde"
+                >
+                    <label for="solde-par">Soldée par</label>
+                    <input
+                        type="text"
+                        id="solde-par"
+                        name="solde_par"
+                        placeholder="Nom de la personne"
+                        maxlength="200"
+                    >
+                </div>
+
+                <button
+                    type="submit"
+                    class="btn-status"
+                    id="bouton-statut"
+                >
+                    ✓ Marquer comme soldée
+                </button>
+            </form>
+
+            <button
+                type="button"
+                class="btn-danger"
+                id="bouton-suppression-tache"
+                data-confirm-delete
+                data-url=""
+                data-name="cette tâche"
+            >
+                🗑️ Supprimer
+            </button>
+        </div>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.15/index.global.min.js"></script>
+
+<script>
+document.addEventListener("DOMContentLoaded", function () {
+    const calendarEl = document.getElementById("calendar");
+
+    const modalAjout = document.getElementById("agenda-modal");
+    const formAjout = document.getElementById("form-ajout");
+    const titreInput = document.getElementById("titre");
+    const dateInput = document.getElementById("date_tache");
+    const dateFinInput = document.getElementById("date_fin");
+    const heureInput = document.getElementById("heure_tache");
+    const secteurInput = document.getElementById("secteur_id");
+    const demandeParInput = document.getElementById("demande_par");
+    const descriptionInput = document.getElementById("description");
+    const erreurAjout = document.getElementById("erreur-ajout");
+
+    const modalModification =
+        document.getElementById("modal-modification");
+
+    const formModification =
+        document.getElementById("form-modification");
+
+    const modifierTitre =
+        document.getElementById("modifier-titre");
+
+    const modifierDate =
+        document.getElementById("modifier-date");
+
+    const modifierDateFin =
+        document.getElementById("modifier-date-fin");
+
+    const modifierHeure =
+        document.getElementById("modifier-heure");
+
+    const modifierRepetition =
+        document.getElementById("modifier-repetition");
+
+    const modifierSecteur =
+        document.getElementById("modifier-secteur");
+
+    const modifierDemandePar =
+        document.getElementById("modifier-demande-par");
+
+    const modifierDescription =
+        document.getElementById("modifier-description");
+
+    const modifierCouleurs =
+        document.querySelectorAll(".modifier-couleur");
+
+    const erreurModification =
+        document.getElementById("erreur-modification");
+
+    const formStatut = document.getElementById("form-statut");
+    const boutonStatut = document.getElementById("bouton-statut");
+    const soldeParInput = document.getElementById("solde-par");
+    const zoneSaisieSolde =
+        document.getElementById("zone-saisie-solde");
+
+    const infoSolde = document.getElementById("info-solde");
+    const infoSoldePar = document.getElementById("info-solde-par");
+
+    const boutonSuppressionTache =
+        document.getElementById("bouton-suppression-tache");
+
+
+    function obtenirDateLocale() {
+        const maintenant = new Date();
+        const annee = maintenant.getFullYear();
+        const mois = String(maintenant.getMonth() + 1).padStart(2, "0");
+        const jour = String(maintenant.getDate()).padStart(2, "0");
+
+        return `${annee}-${mois}-${jour}`;
+    }
+
+
+    function afficherErreur(element, message) {
+        element.textContent = message;
+        element.hidden = false;
+    }
+
+
+    function masquerErreur(element) {
+        element.textContent = "";
+        element.hidden = true;
+    }
+
+
+    function datesValides(debut, fin) {
+        return !fin || fin >= debut;
+    }
+
+
+    function ouvrirModalAjout(dateSelectionnee = null) {
+        formAjout.reset();
+
+        dateInput.value = dateSelectionnee || obtenirDateLocale();
+        dateFinInput.value = "";
+        dateFinInput.min = dateInput.value;
+        heureInput.value = "";
+        secteurInput.value = "0";
+
+        const bleu = formAjout.querySelector(
+            'input[name="couleur"][value="#2563eb"]'
+        );
+
+        if (bleu) {
+            bleu.checked = true;
+        }
+
+        masquerErreur(erreurAjout);
+
+        modalAjout.hidden = false;
+        document.body.classList.add("modal-open");
+
+        setTimeout(function () {
+            titreInput.focus();
+        }, 50);
+    }
+
+
+    function fermerModalAjout() {
+        modalAjout.hidden = true;
+        document.body.classList.remove("modal-open");
+    }
+
+
+    function ouvrirModalModification(event) {
+        const proprietes = event.extendedProps || {};
+        const tacheId = event.id;
+
+        const soldee =
+            proprietes.solde === true
+            || proprietes.solde === 1
+            || proprietes.solde === "1"
+            || proprietes.solde === "true";
+
+        modifierTitre.value = event.title || "";
+        modifierDate.value = proprietes.date_debut || "";
+        modifierDateFin.value = proprietes.date_fin || "";
+        modifierDateFin.min = modifierDate.value;
+        modifierHeure.value = proprietes.heure_tache || "";
+
+        modifierRepetition.value =
+            proprietes.repetition || "aucune";
+
+        modifierSecteur.value =
+            proprietes.secteur_id
+                ? String(proprietes.secteur_id)
+                : "0";
+
+        modifierDemandePar.value =
+            proprietes.demande_par || "";
+
+        modifierDescription.value =
+            proprietes.description || "";
+
+        const couleur = proprietes.couleur || "#2563eb";
+
+        modifierCouleurs.forEach(function (radio) {
+            radio.checked = radio.value === couleur;
+        });
+
+        formModification.action =
+            `/agenda/${tacheId}/modifier`;
+
+        formStatut.action =
+            `/agenda/${tacheId}/changer-statut`;
+
+        boutonSuppressionTache.dataset.url =
+            `/agenda/${tacheId}/supprimer`;
+
+        boutonSuppressionTache.dataset.name =
+            event.title || "cette tâche";
+
+        masquerErreur(erreurModification);
+
+        if (soldee) {
+            infoSolde.hidden = false;
+            infoSoldePar.textContent =
+                proprietes.solde_par || "Non renseigné";
+
+            zoneSaisieSolde.hidden = true;
+            soldeParInput.value = "";
+            soldeParInput.required = false;
+            soldeParInput.disabled = true;
+
+            boutonStatut.textContent =
+                "↩️ Marquer comme non soldée";
+
+            boutonStatut.classList.add("btn-reopen");
+        } else {
+            infoSolde.hidden = true;
+            infoSoldePar.textContent = "-";
+
+            zoneSaisieSolde.hidden = false;
+            soldeParInput.disabled = false;
+            soldeParInput.required = true;
+            soldeParInput.value = "";
+
+            boutonStatut.textContent =
+                "✓ Marquer comme soldée";
+
+            boutonStatut.classList.remove("btn-reopen");
+        }
+
+        modalModification.hidden = false;
+        document.body.classList.add("modal-open");
+
+        setTimeout(function () {
+            modifierTitre.focus();
+        }, 50);
+    }
+
+
+    function fermerModalModification() {
+        modalModification.hidden = true;
+        document.body.classList.remove("modal-open");
+    }
+
+
+    formAjout.addEventListener("submit", function (event) {
+        masquerErreur(erreurAjout);
+
+        if (!datesValides(dateInput.value, dateFinInput.value)) {
+            event.preventDefault();
+            afficherErreur(
+                erreurAjout,
+                "La date de fin ne peut pas être antérieure à la date de début."
+            );
+        }
+    });
+
+
+    formModification.addEventListener("submit", function (event) {
+        masquerErreur(erreurModification);
+
+        if (!datesValides(
+            modifierDate.value,
+            modifierDateFin.value
+        )) {
+            event.preventDefault();
+            afficherErreur(
+                erreurModification,
+                "La date de fin ne peut pas être antérieure à la date de début."
+            );
+        }
+    });
+
+
+    dateInput.addEventListener("change", function () {
+        dateFinInput.min = dateInput.value;
+
+        if (
+            dateFinInput.value
+            && dateFinInput.value < dateInput.value
+        ) {
+            dateFinInput.value = "";
+        }
+    });
+
+
+    modifierDate.addEventListener("change", function () {
+        modifierDateFin.min = modifierDate.value;
+
+        if (
+            modifierDateFin.value
+            && modifierDateFin.value < modifierDate.value
+        ) {
+            modifierDateFin.value = "";
+        }
+    });
+
+
+    function formaterDateLocale(date) {
+        const annee = date.getFullYear();
+        const mois = String(date.getMonth() + 1).padStart(2, "0");
+        const jour = String(date.getDate()).padStart(2, "0");
+
+        return `${annee}-${mois}-${jour}`;
+    }
+
+
+    function calculerPaques(annee) {
+        const a = annee % 19;
+        const b = Math.floor(annee / 100);
+        const c = annee % 100;
+        const d = Math.floor(b / 4);
+        const e = b % 4;
+        const f = Math.floor((b + 8) / 25);
+        const g = Math.floor((b - f + 1) / 3);
+        const h = (19 * a + b - d - g + 15) % 30;
+        const i = Math.floor(c / 4);
+        const k = c % 4;
+        const l = (32 + 2 * e + 2 * i - h - k) % 7;
+        const m = Math.floor((a + 11 * h + 22 * l) / 451);
+        const mois = Math.floor((h + l - 7 * m + 114) / 31);
+        const jour = ((h + l - 7 * m + 114) % 31) + 1;
+
+        return new Date(annee, mois - 1, jour);
+    }
+
+
+    function ajouterJours(date, nombreJours) {
+        const resultat = new Date(date);
+        resultat.setDate(resultat.getDate() + nombreJours);
+        return resultat;
+    }
+
+
+    function obtenirJoursFeriesFrance(annee) {
+        const paques = calculerPaques(annee);
+
+        const jours = {
+            [`${annee}-01-01`]: "Jour de l’An",
+            [`${annee}-05-01`]: "Fête du Travail",
+            [`${annee}-05-08`]: "Victoire 1945",
+            [`${annee}-07-14`]: "Fête nationale",
+            [`${annee}-08-15`]: "Assomption",
+            [`${annee}-11-01`]: "Toussaint",
+            [`${annee}-11-11`]: "Armistice 1918",
+            [`${annee}-12-25`]: "Noël"
+        };
+
+        jours[formaterDateLocale(ajouterJours(paques, 1))] =
+            "Lundi de Pâques";
+
+        jours[formaterDateLocale(ajouterJours(paques, 39))] =
+            "Ascension";
+
+        jours[formaterDateLocale(ajouterJours(paques, 50))] =
+            "Lundi de Pentecôte";
+
+        return jours;
+    }
+
+
+    const cacheJoursFeries = {};
+
+
+    function obtenirNomJourFerie(date) {
+        const annee = date.getFullYear();
+
+        if (!cacheJoursFeries[annee]) {
+            cacheJoursFeries[annee] =
+                obtenirJoursFeriesFrance(annee);
+        }
+
+        return cacheJoursFeries[annee][
+            formaterDateLocale(date)
+        ] || null;
+    }
+
+
+    const calendar = new FullCalendar.Calendar(calendarEl, {
+        locale: "fr",
+        initialView: "dayGridMonth",
+        firstDay: 1,
+        height: "auto",
+        selectable: true,
+        dayMaxEvents: true,
+        displayEventTime: true,
+
+        dayCellClassNames: function (info) {
+            return obtenirNomJourFerie(info.date)
+                ? ["fc-day-ferie"]
+                : [];
+        },
+
+        dayCellDidMount: function (info) {
+            const nomJourFerie =
+                obtenirNomJourFerie(info.date);
+
+            if (nomJourFerie) {
+                info.el.setAttribute(
+                    "title",
+                    `Jour férié : ${nomJourFerie}`
+                );
+            }
+        },
+
+        eventTimeFormat: {
+            hour: "2-digit",
+            minute: "2-digit",
+            hour12: false
+        },
+
+        headerToolbar: {
+            left: "prev,next today",
+            center: "title",
+            right: "dayGridMonth,listWeek"
+        },
+
+        buttonText: {
+            today: "Aujourd’hui",
+            month: "Mois",
+            list: "Liste"
+        },
+
+        /*
+         * Les événements sont intégrés directement dans la page.
+         * Cela évite la requête fetch bloquée sur certains ordinateurs.
+         */
+        events: {{ evenements_agenda | tojson }},
+
+        dateClick: function (info) {
+            ouvrirModalAjout(info.dateStr);
+        },
+
+        select: function (info) {
+            ouvrirModalAjout(info.startStr);
+
+            if (info.endStr) {
+                const finExclusive =
+                    new Date(`${info.endStr}T00:00:00`);
+
+                finExclusive.setDate(finExclusive.getDate() - 1);
+
+                const annee = finExclusive.getFullYear();
+                const mois = String(
+                    finExclusive.getMonth() + 1
+                ).padStart(2, "0");
+
+                const jour = String(
+                    finExclusive.getDate()
+                ).padStart(2, "0");
+
+                const dateFinSelectionnee =
+                    `${annee}-${mois}-${jour}`;
+
+                if (dateFinSelectionnee !== info.startStr) {
+                    dateFinInput.value = dateFinSelectionnee;
+                }
+            }
+
+            calendar.unselect();
+        },
+
+        eventClick: function (info) {
+            info.jsEvent.preventDefault();
+            ouvrirModalModification(info.event);
+        },
+
+        eventDidMount: function (info) {
+            info.el.style.cursor = "pointer";
+
+            const proprietes = info.event.extendedProps || {};
+            let texte = info.event.title;
+
+            if (proprietes.heure_tache) {
+                texte += `\nHeure : ${proprietes.heure_tache}`;
+            }
+
+            if (proprietes.date_fin) {
+                texte += `\nJusqu’au : ${proprietes.date_fin}`;
+            }
+
+            const libellesRepetition = {
+                quotidienne: "Tous les jours",
+                hebdomadaire: "Toutes les semaines",
+                mensuelle: "Tous les mois",
+                annuelle: "Tous les ans"
+            };
+
+            if (
+                proprietes.repetition
+                && proprietes.repetition !== "aucune"
+            ) {
+                texte +=
+                    `\nRépétition : ${libellesRepetition[proprietes.repetition]}`;
+            }
+
+            if (proprietes.secteur_nom) {
+                texte += `\nSecteur : ${proprietes.secteur_nom}`;
+            }
+
+            if (proprietes.demande_par) {
+                texte += `\nDemandée par : ${proprietes.demande_par}`;
+            }
+
+            info.el.setAttribute("title", texte);
+        }
+    });
+
+    calendar.render();
+
+
+    document.getElementById("nouvelle-tache").addEventListener(
+        "click",
+        function () {
+            ouvrirModalAjout();
+        }
+    );
+
+    document.getElementById("fermer-modal").addEventListener(
+        "click",
+        fermerModalAjout
+    );
+
+    document.getElementById("annuler-tache").addEventListener(
+        "click",
+        fermerModalAjout
+    );
+
+    document.getElementById(
+        "fermer-modal-modification"
+    ).addEventListener(
+        "click",
+        fermerModalModification
+    );
+
+    document.getElementById(
+        "annuler-modification"
+    ).addEventListener(
+        "click",
+        fermerModalModification
+    );
+
+    modalAjout.addEventListener("click", function (event) {
+        if (event.target === modalAjout) {
+            fermerModalAjout();
+        }
+    });
+
+    modalModification.addEventListener("click", function (event) {
+        if (event.target === modalModification) {
+            fermerModalModification();
+        }
+    });
+
+    document.addEventListener("keydown", function (event) {
+        if (event.key !== "Escape") {
+            return;
+        }
+
+        if (!modalAjout.hidden) {
+            fermerModalAjout();
+        }
+
+        if (!modalModification.hidden) {
+            fermerModalModification();
+        }
+    });
+});
+</script>
+
+{% endblock %}

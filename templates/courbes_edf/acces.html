@@ -1,0 +1,41 @@
+{% extends "base.html" %}
+
+{% block page_title %}Courbes EDF{% endblock %}
+{% block page_subtitle %}Accès protégé{% endblock %}
+
+{% block content %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/courbes_edf.css') }}">
+
+<div class="edf-access-wrap">
+    <section class="card edf-access-card">
+        <div class="edf-lock">🔐</div>
+        <h2>Accès aux courbes EDF</h2>
+        <p>Entrez le code d’accès pour ouvrir ce module.</p>
+
+        {% if erreur %}
+            <div class="edf-alert edf-alert-error">{{ erreur }}</div>
+        {% endif %}
+
+        <form method="POST" class="edf-code-form">
+            <label for="code">Code d’accès</label>
+            <input
+                type="password"
+                id="code"
+                name="code"
+                inputmode="numeric"
+                autocomplete="off"
+                maxlength="20"
+                autofocus
+                required
+            >
+
+            <div class="edf-actions">
+                <a href="{{ url_for('parametres.parametres') }}" class="btn-secondary">
+                    Annuler
+                </a>
+                <button type="submit" class="btn">Accéder</button>
+            </div>
+        </form>
+    </section>
+</div>
+{% endblock %}

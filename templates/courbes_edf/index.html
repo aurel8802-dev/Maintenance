@@ -1,0 +1,244 @@
+{% extends "base.html" %}
+
+{% block page_title %}Courbes EDF / ENEDIS{% endblock %}
+{% block page_subtitle %}Historique et analyse des courbes de consommation{% endblock %}
+
+{% block content %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/courbes_edf.css') }}">
+
+{% if request.args.get('message') %}
+    <div class="edf-alert edf-alert-success">{{ request.args.get('message') }}</div>
+{% endif %}
+{% if request.args.get('erreur') %}
+    <div class="edf-alert edf-alert-error">{{ request.args.get('erreur') }}</div>
+{% endif %}
+
+<div class="edf-layout">
+    <aside class="card edf-sidebar">
+        <div class="edf-sidebar-header">
+            <div>
+                <h2>⚡ Courbes EDF</h2>
+                <p>Import et historique</p>
+            </div>
+        </div>
+
+        <form
+            action="{{ url_for('courbes_edf.importer') }}"
+            method="POST"
+            enctype="multipart/form-data"
+            class="edf-import-form"
+        >
+            <label for="fichier">Importer une courbe XML</label>
+            <input
+                type="file"
+                id="fichier"
+                name="fichier"
+                accept=".xml,.txt,text/xml,application/xml"
+                required
+            >
+
+            <label class="edf-check">
+                <input type="checkbox" name="remplacer" value="1">
+                Remplacer si elle existe déjà
+            </label>
+
+            <button type="submit" class="btn edf-full">📂 Importer</button>
+        </form>
+
+        <div class="edf-history-title">
+            <h3>Historique</h3>
+        </div>
+
+        <form method="GET" class="edf-search-form">
+            <input
+                type="search"
+                name="recherche"
+                value="{{ recherche }}"
+                placeholder="🔍 Rechercher..."
+            >
+        </form>
+
+        <div class="edf-history-list">
+            {% if historique %}
+                {% set ns = namespace(annee=None) %}
+                {% for item in historique %}
+                    {% if ns.annee != item.annee %}
+                        {% set ns.annee = item.annee %}
+                        <div class="edf-year">📁 {{ item.annee }}</div>
+                    {% endif %}
+
+                    <a
+                        class="edf-history-item {% if courbe and courbe.id == item.id %}active{% endif %}"
+                        href="{{ url_for('courbes_edf.index', courbe_id=item.id, recherche=recherche) }}"
+                    >
+                        📈 {{ item.mois_nom }}
+                    </a>
+                {% endfor %}
+            {% else %}
+                <p class="edf-muted">Aucune courbe enregistrée.</p>
+            {% endif %}
+        </div>
+
+        <a href="{{ url_for('courbes_edf.quitter') }}" class="btn-secondary edf-full edf-quit">
+            ← Quitter le module
+        </a>
+    </aside>
+
+    <main class="edf-main">
+        {% if courbe and stats %}
+            <section class="card edf-main-card">
+                <div class="edf-topbar">
+                    <div>
+                        <h2>
+                            Courbe {{ mois[courbe.mois] }} {{ courbe.annee }}
+                        </h2>
+                        <p>
+                            Du {{ stats.debut }} au {{ stats.fin }}
+                        </p>
+                    </div>
+
+                    <div class="edf-top-actions">
+                        <a
+                            href="{{ url_for('courbes_edf.exporter', courbe_id=courbe.id) }}"
+                            class="btn-secondary"
+                        >
+                            📤 Exporter Excel
+                        </a>
+
+                        <form
+                            method="POST"
+                            action="{{ url_for('courbes_edf.supprimer', courbe_id=courbe.id) }}"
+                            onsubmit="return confirm('Supprimer définitivement cette courbe ?');"
+                        >
+                            <button type="submit" class="btn-danger">
+                                🗑 Supprimer
+                            </button>
+                        </form>
+                    </div>
+                </div>
+
+                <div class="edf-stats-grid">
+                    <article class="edf-stat">
+                        <span>Mesures</span>
+                        <strong>{{ stats.mesures }}</strong>
+                    </article>
+                    <article class="edf-stat">
+                        <span>Maximum</span>
+                        <strong>{{ "%.2f"|format(stats.maximum) }} kW</strong>
+                    </article>
+                    <article class="edf-stat">
+                        <span>Moyenne</span>
+                        <strong>{{ "%.2f"|format(stats.moyenne) }} kW</strong>
+                    </article>
+                    <article class="edf-stat">
+                        <span>Minimum</span>
+                        <strong>{{ "%.2f"|format(stats.minimum) }} kW</strong>
+                    </article>
+                </div>
+
+                <div class="edf-chart-wrap">
+                    <canvas id="edf-chart" aria-label="Courbe de consommation"></canvas>
+                </div>
+            </section>
+
+            <script>
+                document.addEventListener("DOMContentLoaded", function () {
+                    const canvas = document.getElementById("edf-chart");
+                    if (!canvas) return;
+
+                    const labels = {{ graphique.labels | tojson }};
+                    const values = {{ graphique.valeurs | tojson }};
+
+                    function drawChart() {
+                        const rect = canvas.parentElement.getBoundingClientRect();
+                        const dpr = window.devicePixelRatio || 1;
+                        const cssWidth = Math.max(320, rect.width);
+                        const cssHeight = Math.max(420, Math.min(650, window.innerHeight * 0.66));
+
+                        canvas.style.width = cssWidth + "px";
+                        canvas.style.height = cssHeight + "px";
+                        canvas.width = Math.floor(cssWidth * dpr);
+                        canvas.height = Math.floor(cssHeight * dpr);
+
+                        const ctx = canvas.getContext("2d");
+                        ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+                        ctx.clearRect(0, 0, cssWidth, cssHeight);
+
+                        if (!values.length) return;
+
+                        const pad = {left: 58, right: 18, top: 24, bottom: 48};
+                        const w = cssWidth - pad.left - pad.right;
+                        const h = cssHeight - pad.top - pad.bottom;
+                        const min = Math.min(...values, 0);
+                        const max = Math.max(...values, 1);
+                        const span = Math.max(1, max - min);
+
+                        ctx.font = "12px Arial, sans-serif";
+                        ctx.strokeStyle = "#dbe3ee";
+                        ctx.fillStyle = "#64748b";
+                        ctx.lineWidth = 1;
+
+                        for (let i = 0; i <= 5; i++) {
+                            const y = pad.top + (h * i / 5);
+                            const value = max - (span * i / 5);
+                            ctx.beginPath();
+                            ctx.moveTo(pad.left, y);
+                            ctx.lineTo(pad.left + w, y);
+                            ctx.stroke();
+                            ctx.fillText(value.toFixed(0), 8, y + 4);
+                        }
+
+                        ctx.strokeStyle = "#2563eb";
+                        ctx.lineWidth = 1.5;
+                        ctx.beginPath();
+
+                        values.forEach((value, index) => {
+                            const x = pad.left + (w * index / Math.max(1, values.length - 1));
+                            const y = pad.top + h - ((value - min) / span) * h;
+                            if (index === 0) ctx.moveTo(x, y);
+                            else ctx.lineTo(x, y);
+                        });
+
+                        ctx.stroke();
+
+                        ctx.fillStyle = "#64748b";
+                        const ticks = 5;
+                        for (let i = 0; i <= ticks; i++) {
+                            const index = Math.min(
+                                labels.length - 1,
+                                Math.round((labels.length - 1) * i / ticks)
+                            );
+                            const x = pad.left + (w * i / ticks);
+                            const text = labels[index] || "";
+                            ctx.save();
+                            ctx.translate(x, cssHeight - 12);
+                            ctx.rotate(-0.35);
+                            ctx.fillText(text, -20, 0);
+                            ctx.restore();
+                        }
+
+                        ctx.save();
+                        ctx.translate(16, pad.top + h / 2);
+                        ctx.rotate(-Math.PI / 2);
+                        ctx.fillStyle = "#475569";
+                        ctx.fillText("Consommation (kW)", -48, 0);
+                        ctx.restore();
+                    }
+
+                    drawChart();
+                    window.addEventListener("resize", drawChart);
+                });
+            </script>
+        {% else %}
+            <section class="card edf-empty-card">
+                <div class="edf-empty-icon">⚡</div>
+                <h2>Aucune courbe sélectionnée</h2>
+                <p>
+                    Importez une courbe XML ou sélectionnez une courbe dans
+                    l’historique pour afficher ses statistiques et son graphique.
+                </p>
+            </section>
+        {% endif %}
+    </main>
+</div>
+{% endblock %}

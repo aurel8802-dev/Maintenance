@@ -1,0 +1,149 @@
+{% extends "base.html" %}
+
+{% block page_title %}
+Détail de la demande
+{% endblock %}
+
+{% block page_subtitle %}
+Consultation de la demande d'intervention
+{% endblock %}
+
+{% block content %}
+
+<section class="card detail-card">
+
+    <div class="detail-top">
+        <a href="/demandes" class="btn-secondary">← Retour aux demandes</a>
+
+        <span class="request-number">
+            DI-{{ "%05d"|format(demande.id) }}
+        </span>
+    </div>
+
+    <div class="detail-title">
+        <div>
+            <h2>{{ demande.nature_travaux }}</h2>
+            <p>Fiche complète de la demande d'intervention</p>
+        </div>
+
+    {% if demande.statut == "Soldé" %}
+        <span class="badge badge-success">✅ Soldé</span>
+    {% else %}
+        <span class="badge badge-progress">🟡 En cours</span>
+    {% endif %}
+        </div>
+
+    <div class="detail-grid">
+
+        <div class="detail-item">
+            <span>📅 Date</span>
+            <strong>{{ demande.date_creation|date_fr }}</strong>
+        </div>
+
+        <div class="detail-item">
+            <span>🏭 Secteur</span>
+            <strong>{{ demande.secteur_nom or "Non renseigné" }}</strong>
+        </div>
+
+        <div class="detail-item">
+            <span>👤 Demandeur</span>
+            <strong>{{ demande.demandeur_nom or "Non renseigné" }}</strong>
+        </div>
+
+    </div>
+
+    <div class="detail-section">
+        <span>📝 Objet de la demande</span>
+        <p>{{ demande.nature_travaux }}</p>
+    </div>
+
+    <div class="detail-section">
+        <span>📄 Description</span>
+        <p>{{ demande.description }}</p>
+    </div>
+
+        {% if demande.statut == "Soldé" %}
+    <div class="detail-section solded-section">
+        <span>✅ Informations de clôture</span>
+
+        <p><strong>Date de solde :</strong> {{ demande.date_solde|date_fr }}</p>
+        <p><strong>Soldé par :</strong> {{ demande.solde_par or "-" }}</p>
+        <p><strong>Référence pièce remplacée :</strong> {{ demande.reference_piece or "-" }}</p>
+        <p><strong>Commentaire :</strong> {{ demande.commentaire_solde or "-" }}</p>
+    </div>
+    {% endif %}
+
+    <div class="detail-section">
+        <span>📷 Photos</span>
+
+        {% if photos %}
+    <div class="photos-grid">
+        {% for photo in photos %}
+
+            {% if photo.url_photo %}
+                <img
+                    src="{{ photo.url_photo }}"
+                    alt="Photo demande"
+                    class="photo-thumbnail"
+                    onclick="openImage(this.src)"
+                >
+            {% elif photo.nom_fichier %}
+                <img
+                    src="{{ url_for('uploaded_photo', filename=photo.nom_fichier) }}"
+                    alt="Photo demande"
+                    class="photo-thumbnail"
+                    onclick="openImage(this.src)"
+                >
+            {% endif %}
+
+        {% endfor %}
+    </div>
+{% else %}
+    <p>Aucune photo ajoutée pour le moment.</p>
+{% endif %}
+    </div>
+
+    <div class="detail-actions">
+
+        <div class="detail-actions-left">
+        {% if demande.statut != "Soldé" %}
+            <a href="/demandes/{{ demande.id }}/solder" class="btn-secondary">
+                ✅ Soldé
+            </a>
+        {% endif %}
+        </div>
+
+        <div class="detail-actions-right">
+            <a href="/demandes/{{ demande.id }}/modifier" class="btn">
+                ✏️ Modifier
+            </a>
+
+            <a href="/demandes/{{ demande.id }}/supprimer" class="btn-danger">
+                🗑️ Supprimer
+            </a>
+        </div>
+
+    </div>
+
+</section>
+
+<div id="imageModal" class="image-modal" onclick="closeImage()">
+    <span class="close-image">&times;</span>
+
+    <img id="imagePreview" class="image-preview">
+</div>
+
+<script>
+
+function openImage(src){
+    document.getElementById("imagePreview").src = src;
+    document.getElementById("imageModal").style.display = "flex";
+}
+
+function closeImage(){
+    document.getElementById("imageModal").style.display = "none";
+}
+
+</script>
+
+{% endblock %}

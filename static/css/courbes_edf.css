@@ -1,0 +1,351 @@
+.edf-layout {
+    display: grid;
+    grid-template-columns: 300px minmax(0, 1fr);
+    gap: 20px;
+    align-items: start;
+}
+
+.edf-sidebar {
+    position: sticky;
+    top: 18px;
+    padding: 20px;
+}
+
+.edf-sidebar h2,
+.edf-sidebar h3,
+.edf-main h2 {
+    margin-top: 0;
+}
+
+.edf-sidebar-header p,
+.edf-topbar p,
+.edf-muted,
+.edf-empty-card p,
+.edf-access-card p {
+    color: #64748b;
+}
+
+.edf-import-form,
+.edf-code-form {
+    display: grid;
+    gap: 10px;
+}
+
+.edf-import-form {
+    margin: 18px 0 24px;
+    padding-bottom: 22px;
+    border-bottom: 1px solid #e5e7eb;
+}
+
+.edf-import-form input[type="file"],
+.edf-search-form input,
+.edf-code-form input {
+    width: 100%;
+    box-sizing: border-box;
+    padding: 11px 12px;
+    border: 1px solid #d1d5db;
+    border-radius: 10px;
+    background: #fff;
+}
+
+.edf-check {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 14px;
+    color: #475569;
+}
+
+.edf-full {
+    width: 100%;
+    justify-content: center;
+    text-align: center;
+    box-sizing: border-box;
+}
+
+.edf-search-form {
+    margin-bottom: 12px;
+}
+
+.edf-history-list {
+    max-height: 390px;
+    overflow: auto;
+    padding-right: 4px;
+}
+
+.edf-year {
+    margin: 14px 0 5px;
+    font-weight: 800;
+    color: #334155;
+}
+
+.edf-history-item {
+    display: block;
+    padding: 10px 12px;
+    margin: 4px 0;
+    border-radius: 9px;
+    color: #334155;
+    text-decoration: none;
+}
+
+.edf-history-item:hover,
+.edf-history-item.active {
+    background: #eff6ff;
+    color: #1d4ed8;
+}
+
+.edf-quit {
+    margin-top: 18px;
+    display: inline-block;
+}
+
+.edf-main {
+    min-width: 0;
+}
+
+.edf-main-card {
+    padding: 22px;
+}
+
+.edf-topbar {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 18px;
+    margin-bottom: 20px;
+}
+
+.edf-top-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    align-items: center;
+}
+
+.edf-top-actions form {
+    margin: 0;
+}
+
+.edf-stats-grid {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 12px;
+    margin-bottom: 22px;
+}
+
+.edf-stat {
+    padding: 16px;
+    border: 1px solid #e5e7eb;
+    border-radius: 14px;
+    background: #f8fafc;
+}
+
+.edf-stat span {
+    display: block;
+    color: #64748b;
+    font-size: 13px;
+    margin-bottom: 8px;
+}
+
+.edf-stat strong {
+    font-size: 20px;
+    color: #0f172a;
+}
+
+.edf-chart-wrap {
+    width: 100%;
+    overflow: hidden;
+    border: 1px solid #e5e7eb;
+    border-radius: 14px;
+    background: #fff;
+    padding: 8px;
+    box-sizing: border-box;
+}
+
+.edf-empty-card,
+.edf-access-card {
+    text-align: center;
+    padding: 48px 28px;
+}
+
+.edf-empty-icon,
+.edf-lock {
+    font-size: 50px;
+    margin-bottom: 12px;
+}
+
+.edf-access-wrap {
+    max-width: 520px;
+    margin: 40px auto;
+}
+
+.edf-code-form {
+    text-align: left;
+    margin-top: 24px;
+}
+
+.edf-code-form label {
+    font-weight: 700;
+}
+
+.edf-code-form input {
+    font-size: 22px;
+    letter-spacing: 6px;
+    text-align: center;
+}
+
+.edf-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+    margin-top: 8px;
+}
+
+.edf-alert {
+    padding: 12px 14px;
+    border-radius: 10px;
+    margin-bottom: 16px;
+    font-weight: 600;
+}
+
+.edf-alert-success {
+    background: #ecfdf5;
+    border: 1px solid #a7f3d0;
+    color: #166534;
+}
+
+.edf-alert-error {
+    background: #fef2f2;
+    border: 1px solid #fecaca;
+    color: #b91c1c;
+}
+
+@media (max-width: 1050px) {
+    .edf-layout {
+        grid-template-columns: 1fr;
+    }
+
+    .edf-sidebar {
+        position: static;
+    }
+
+    .edf-history-list {
+        max-height: 260px;
+    }
+}
+
+@media (max-width: 800px) {
+    .edf-stats-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .edf-topbar {
+        flex-direction: column;
+    }
+}
+
+@media (max-width: 520px) {
+    .edf-stats-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .edf-actions,
+    .edf-top-actions {
+        flex-direction: column;
+        align-items: stretch;
+    }
+}
+
+/* =========================================================
+   COURBES EDF — AFFICHAGE LARGE ÉCRAN
+   ========================================================= */
+
+/* La page EDF utilise davantage la largeur disponible, sans modifier
+   les proportions des autres pages de l'application Maintenance. */
+.content-area main:has(.edf-layout) {
+    width: 100%;
+    max-width: 1560px;
+    margin: 28px auto;
+    padding: 0 30px;
+}
+
+.edf-layout {
+    grid-template-columns: 320px minmax(0, 1fr);
+    gap: 26px;
+}
+
+.edf-sidebar {
+    padding: 22px;
+}
+
+.edf-main-card {
+    padding: 26px;
+}
+
+.edf-topbar {
+    margin-bottom: 24px;
+}
+
+.edf-stats-grid {
+    gap: 16px;
+    margin-bottom: 24px;
+}
+
+.edf-stat {
+    min-height: 86px;
+    padding: 17px 18px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+}
+
+.edf-stat strong {
+    font-size: 22px;
+}
+
+.edf-chart-wrap {
+    padding: 14px;
+}
+
+#edf-chart {
+    display: block;
+    width: 100%;
+}
+
+@media (min-width: 1350px) {
+    .edf-layout {
+        grid-template-columns: 330px minmax(0, 1fr);
+        gap: 30px;
+    }
+}
+
+@media (max-width: 1050px) {
+    .content-area main:has(.edf-layout) {
+        max-width: 1100px;
+        padding: 0 24px;
+    }
+}
+
+/* Champ de sélection XML : reste proprement dans la colonne latérale */
+.edf-import-form input[type="file"] {
+    display: block;
+    width: 100%;
+    min-width: 0;
+    max-width: 100%;
+    padding: 6px;
+    overflow: hidden;
+    font-size: 13px;
+    line-height: 1.4;
+    color: #475569;
+}
+
+.edf-import-form input[type="file"]::file-selector-button {
+    margin-right: 8px;
+    padding: 7px 10px;
+    border: 0;
+    border-radius: 7px;
+    background: #f1f5f9;
+    color: #0f172a;
+    font-weight: 700;
+    cursor: pointer;
+}

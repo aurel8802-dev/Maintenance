@@ -1,0 +1,81 @@
+{% extends "base.html" %}
+
+{% block page_title %}
+Tableau de bord
+{% endblock %}
+
+{% block page_subtitle %}
+Vue d'ensemble des interventions
+{% endblock %}
+
+{% block content %}
+
+<section class="dashboard">
+    <div class="stat-card">
+        <span>Total demandes</span>
+        <strong>{{ total }}</strong>
+    </div>
+
+    <div class="stat-card">
+        <span>En cours</span>
+        <strong>{{ en_cours }}</strong>
+    </div>
+
+    <div class="stat-card">
+        <span>Soldées</span>
+        <strong>{{ soldees }}</strong>
+    </div>
+</section>
+
+<section class="card">
+    <div class="section-header">
+        <div>
+            <h2>Prochaines tâches</h2>
+            <p>Les 5 prochaines dates enregistrées dans l’agenda</p>
+        </div>
+
+        <a href="{{ url_for('agenda.afficher_agenda') }}" class="btn-secondary">
+            Voir l’agenda
+        </a>
+    </div>
+
+    {% if prochaines_taches %}
+        {% for tache in prochaines_taches %}
+            <div
+                class="demande-card clickable-row"
+                onclick="window.location.href='{{ url_for('agenda.afficher_agenda') }}'"
+            >
+                <h3>{{ tache.titre }}</h3>
+
+                <p>
+                    <strong>Date :</strong>
+                    {{ tache.date_tache | date_fr }}
+                </p>
+
+                <p>
+                    <strong>Secteur :</strong>
+                    {{ tache.secteur_nom or "Non renseigné" }}
+                </p>
+
+                <p>
+                    <strong>Demandée par :</strong>
+                    {{ tache.demande_par or "Non renseigné" }}
+                </p>
+
+                {% if tache.description %}
+                    <p>
+                        <strong>Description :</strong>
+                        {{ tache.description }}
+                    </p>
+                {% endif %}
+            </div>
+        {% endfor %}
+    {% else %}
+        <div class="empty-state">
+            <div class="icon">📅</div>
+            <p>Aucune tâche à venir dans l’agenda.</p>
+        </div>
+    {% endif %}
+</section>
+
+{% endblock %}

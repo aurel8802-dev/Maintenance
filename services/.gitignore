@@ -1,0 +1,20 @@
+# Environnement
+.env
+
+# Base SQLite locale
+maintenance.db
+
+# Photos locales
+uploads/photos/
+
+# Cache Python
+__pycache__/
+*.pyc
+
+# Environnements virtuels
+.venv/
+venv/
+
+# Fichiers système
+.DS_Store
+Thumbs.db
