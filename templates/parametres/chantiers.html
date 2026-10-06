@@ -1,0 +1,21 @@
+{% extends "base.html" %}
+{% block page_title %}Gestion des chantiers{% endblock %}
+{% block page_subtitle %}Ajouter et administrer les chantiers{% endblock %}
+{% block content %}
+<section class="card">
+ <div class="section-header"><div><h2>🏗️ Chantiers</h2><p>Gestion des chantiers disponibles pour les commandes.</p></div><a href="{{ url_for('parametres.parametres') }}" class="btn-secondary">← Retour</a></div>
+ {% if erreur %}<p class="warning-text">{{ erreur }}</p>{% endif %}{% if message %}<p class="success-text">{{ message }}</p>{% endif %}
+ <form method="POST" class="form"><label>Nouveau chantier</label><input type="text" name="nom" placeholder="Ex : Perceuse Double" required><button type="submit" class="btn">Ajouter le chantier</button></form>
+ <hr>
+ <div class="sector-cleanup"><div><strong>Nettoyage automatique</strong><p>Fusionne les doublons et uniformise les noms des chantiers sans perdre les commandes associées.</p></div><form method="POST" action="{{ url_for('parametres.nettoyer_chantiers') }}" onsubmit="return confirm('Nettoyer et fusionner les chantiers en double ?');"><button type="submit" class="btn-secondary">🧹 Nettoyer les chantiers</button></form></div>
+ <h3>Chantiers existants</h3>
+ {% if chantiers %}<div class="table-container"><table class="modern-table"><thead><tr><th>Nom</th><th style="width:280px">Actions</th></tr></thead><tbody>
+ {% for chantier in chantiers %}<tr><td><div id="display-chantier-{{ chantier.id }}">{{ chantier.nom }}</div><form id="edit-chantier-{{ chantier.id }}" method="POST" action="{{ url_for('parametres.modifier_chantier', chantier_id=chantier.id) }}" class="sector-edit-form" style="display:none"><input type="text" name="nom" value="{{ chantier.nom }}" required><button type="submit" class="btn">💾 Enregistrer</button><button type="button" class="btn-secondary" data-cancel-chantier data-id="{{ chantier.id }}">Annuler</button></form></td><td><button type="button" class="btn-secondary" id="edit-chantier-button-{{ chantier.id }}" data-edit-chantier data-id="{{ chantier.id }}">✏️ Modifier</button> <button type="button" class="btn-danger" data-confirm-delete data-url="{{ url_for('parametres.supprimer_chantier', chantier_id=chantier.id) }}" data-name="{{ chantier.nom }}">🗑️ Supprimer</button></td></tr>{% endfor %}
+ </tbody></table></div>{% else %}<div class="empty-state"><div class="icon">📭</div><p>Aucun chantier enregistré.</p></div>{% endif %}
+</section>
+<script>
+document.addEventListener('DOMContentLoaded',function(){document.querySelectorAll('[data-edit-chantier]').forEach(b=>b.addEventListener('click',()=>editChantier(b.dataset.id)));document.querySelectorAll('[data-cancel-chantier]').forEach(b=>b.addEventListener('click',()=>cancelChantier(b.dataset.id)));});
+function editChantier(id){const d=document.getElementById('display-chantier-'+id),f=document.getElementById('edit-chantier-'+id),b=document.getElementById('edit-chantier-button-'+id);if(!d||!f||!b)return;d.style.display='none';f.style.display='flex';b.style.display='none';const i=f.querySelector('input[name="nom"]');if(i){i.focus();i.select();}}
+function cancelChantier(id){const d=document.getElementById('display-chantier-'+id),f=document.getElementById('edit-chantier-'+id),b=document.getElementById('edit-chantier-button-'+id);if(!d||!f||!b)return;d.style.display='block';f.style.display='none';b.style.display='inline-block';}
+</script>
+{% endblock %}

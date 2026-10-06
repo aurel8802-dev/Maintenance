@@ -1,0 +1,16 @@
+{% extends "base.html" %}
+{% block page_title %}{{ titre }}{% endblock %}
+{% block page_subtitle %}Gestion des commandes de pièces{% endblock %}
+{% block content %}
+<form class="cmd-form" method="post">
+    <div><label>Date</label><input type="date" name="date_commande" required value="{{ commande['date_commande'] if commande else '' }}"></div>
+    <div><label>Quantité</label><input name="quantite" value="{{ commande['quantite'] if commande else '1' }}"></div>
+    <div class="wide"><label>Pièce</label><input name="piece" required value="{{ commande['piece'] if commande else '' }}" placeholder="Ex. Disjoncteur 3P courbe C 40A Schneider"></div>
+    <div><label>Référence</label><input name="reference" value="{{ commande['reference'] if commande else '' }}" placeholder="Ex. A9F77340"></div>
+    <div><label>État</label><select name="etat">{% for x in etats %}<option value="{{ x }}" {% if commande and commande['etat'] == x %}selected{% endif %}>{{ x }}</option>{% endfor %}</select></div>
+    <div><label>Délai / date prévue</label><input type="date" name="delai" value="{{ commande['delai'] if commande and commande['delai'] else '' }}"></div>
+    <div><label>Chantier</label><select name="chantier_id"><option value="">Non renseigné</option>{% for ch in chantiers %}<option value="{{ ch['id'] }}" {% if commande and commande['chantier_id'] == ch['id'] %}selected{% endif %}>{{ ch['nom'] }}</option>{% endfor %}</select></div>
+    <div class="wide"><label>Commentaire</label><textarea name="commentaire" rows="4">{{ commande['commentaire'] if commande else '' }}</textarea></div>
+    <div class="wide cmd-form-actions"><a href="{{ url_for('commandes.liste') }}">Annuler</a><button class="cmd-primary" type="submit">Enregistrer</button></div>
+</form>
+{% endblock %}

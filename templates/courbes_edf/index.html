@@ -28,14 +28,29 @@
             enctype="multipart/form-data"
             class="edf-import-form"
         >
-            <label for="fichier">Importer une courbe XML</label>
+            <label for="fichier">Importer une courbe ENEDIS</label>
             <input
                 type="file"
                 id="fichier"
                 name="fichier"
-                accept=".xml,.txt,text/xml,application/xml"
+                accept=".xml,.txt,.zip,.gz,application/xml,text/xml,application/octet-stream"
                 required
             >
+
+            <div class="edf-key-field">
+                <label for="cle_enedis">Clé Enedis si fichier chiffré</label>
+                <input
+                    type="password"
+                    id="cle_enedis"
+                    name="cle_enedis"
+                    maxlength="64"
+                    autocomplete="off"
+                    placeholder="64 caractères hexadécimaux"
+                >
+                <small>
+                    Laissez vide pour un XML normal. La clé n'est pas enregistrée.
+                </small>
+            </div>
 
             <label class="edf-check">
                 <input type="checkbox" name="remplacer" value="1">
@@ -234,7 +249,7 @@
                 <div class="edf-empty-icon">⚡</div>
                 <h2>Aucune courbe sélectionnée</h2>
                 <p>
-                    Importez une courbe XML ou sélectionnez une courbe dans
+                    Importez une courbe ENEDIS ou sélectionnez une courbe dans
                     l’historique pour afficher ses statistiques et son graphique.
                 </p>
             </section>

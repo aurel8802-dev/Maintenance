@@ -1902,3 +1902,47 @@ form.filters-bar .btn-secondary {
     color: #475569;
     font-weight: 800;
 }
+
+/* Commandes */
+.cmd-toolbar{display:flex;justify-content:flex-end;margin-bottom:16px}.cmd-primary{background:#2563eb;color:#fff!important;border:0;border-radius:10px;padding:11px 16px;text-decoration:none;font-weight:700;cursor:pointer}.cmd-filters{display:grid;grid-template-columns:2fr 1fr 1fr auto auto;gap:10px;background:#fff;padding:16px;border-radius:14px;margin-bottom:16px;align-items:center}.cmd-filters input,.cmd-filters select,.cmd-form input,.cmd-form select,.cmd-form textarea{width:100%;padding:10px 12px;border:1px solid #d1d5db;border-radius:9px;font:inherit;background:#fff}.cmd-filters button{padding:10px 14px;border:0;border-radius:9px;background:#111827;color:#fff;font-weight:700}.cmd-filters a{color:#4b5563;text-decoration:none}.cmd-table-wrap{overflow:auto;background:#fff;border-radius:14px;border:1px solid #e5e7eb}.cmd-table{width:100%;border-collapse:collapse;min-width:1000px}.cmd-table th,.cmd-table td{padding:12px 10px;border-bottom:1px solid #e5e7eb;text-align:left;vertical-align:top}.cmd-table th{background:#f9fafb;font-size:13px}.cmd-badge{display:inline-block;padding:5px 9px;border-radius:999px;background:#e5e7eb;font-size:12px;font-weight:700;white-space:nowrap}.cmd-livre{background:#dcfce7;color:#166534}.cmd-commande{background:#dbeafe;color:#1d4ed8}.cmd-refuse{background:#fee2e2;color:#991b1b}.cmd-prix-demande{background:#fef3c7;color:#92400e}.cmd-actions{white-space:nowrap}.cmd-actions form{display:inline}.cmd-actions a,.cmd-delete{font:inherit;font-size:13px;margin-right:7px}.cmd-delete{border:0;background:none;color:#b91c1c;cursor:pointer}.cmd-empty{text-align:center!important;color:#6b7280;padding:30px!important}.cmd-form{background:#fff;padding:22px;border-radius:14px;display:grid;grid-template-columns:1fr 1fr;gap:18px}.cmd-form label{display:block;font-weight:700;margin-bottom:7px}.cmd-form .wide{grid-column:1/-1}.cmd-form-actions{display:flex;justify-content:flex-end;align-items:center;gap:14px}.cmd-form-actions a{text-decoration:none;color:#4b5563}@media(max-width:900px){.cmd-filters,.cmd-form{grid-template-columns:1fr}.cmd-form .wide{grid-column:auto}}
+
+/* Commandes V2 — mise en page plus lisible */
+.cmd-page{width:100%;max-width:none}.cmd-table-wrap{width:100%;overflow-x:auto}.cmd-table{min-width:1120px;table-layout:fixed}.cmd-table th,.cmd-table td{padding:13px 11px;line-height:1.35}.cmd-col-date{width:100px}.cmd-col-piece{width:235px}.cmd-col-qty{width:55px}.cmd-col-ref{width:115px}.cmd-col-state{width:110px}.cmd-col-delay{width:105px}.cmd-col-site{width:135px}.cmd-col-comment{width:auto}.cmd-col-actions{width:145px}.cmd-piece,.cmd-comment{white-space:normal;overflow-wrap:anywhere}.cmd-nowrap{white-space:nowrap}.cmd-actions{display:flex;align-items:center;gap:10px;white-space:nowrap}.cmd-actions form{margin:0}.cmd-actions a,.cmd-delete{margin:0}.cmd-edit{font-size:13px;font-weight:600;color:#4f46e5;text-decoration:none}.cmd-delete{font-size:13px}.cmd-filters{grid-template-columns:minmax(260px,2fr) minmax(160px,1fr) minmax(180px,1fr) auto auto}.cmd-form{max-width:900px}.chantier-actions{display:flex;align-items:center;gap:10px;flex-wrap:wrap}.chantier-edit-form{display:flex;align-items:center;gap:8px;flex:1;min-width:210px}.chantier-edit-form input{min-width:140px;flex:1;padding:9px 10px;border:1px solid #d1d5db;border-radius:8px;font:inherit}
+@media(max-width:1100px){.cmd-filters{grid-template-columns:1fr 1fr}.cmd-filters input{grid-column:1/-1}.cmd-filters a{align-self:center}.cmd-table{min-width:1050px}}
+@media(max-width:700px){.cmd-filters{grid-template-columns:1fr}.cmd-filters input{grid-column:auto}.cmd-toolbar .cmd-primary{width:100%;text-align:center}.cmd-form{padding:16px}.chantier-actions,.chantier-edit-form{align-items:stretch;flex-direction:column}.chantier-edit-form{width:100%}}
+
+/* Commandes V3 — tableau sans défilement horizontal */
+.cmd-table-wrap{overflow-x:hidden!important}
+.cmd-table{width:100%!important;min-width:0!important;table-layout:fixed!important}
+.cmd-table th,.cmd-table td{padding:12px 8px!important;overflow-wrap:anywhere}
+.cmd-table th:nth-child(1),.cmd-table td:nth-child(1){width:9%}
+.cmd-table th:nth-child(2),.cmd-table td:nth-child(2){width:19%}
+.cmd-table th:nth-child(3),.cmd-table td:nth-child(3){width:5%;text-align:center}
+.cmd-table th:nth-child(4),.cmd-table td:nth-child(4){width:10%}
+.cmd-table th:nth-child(5),.cmd-table td:nth-child(5){width:11%}
+.cmd-table th:nth-child(6),.cmd-table td:nth-child(6){width:9%}
+.cmd-table th:nth-child(7),.cmd-table td:nth-child(7){width:11%}
+.cmd-table th:nth-child(8),.cmd-table td:nth-child(8){width:15%}
+.cmd-table th:nth-child(9),.cmd-table td:nth-child(9){width:11%}
+.cmd-date,.cmd-state{white-space:nowrap}.cmd-actions{display:flex!important;flex-direction:column;align-items:stretch!important;gap:6px!important;white-space:normal!important}.cmd-actions form{display:block!important;width:100%}.cmd-action-btn{box-sizing:border-box;display:inline-flex;width:100%;min-height:32px;align-items:center;justify-content:center;gap:4px;padding:6px 8px!important;border-radius:8px!important;font-size:12px!important;font-weight:700!important;text-decoration:none!important;cursor:pointer}.cmd-edit{border:1px solid #d1d5db!important;background:#f8fafc!important;color:#1f2937!important}.cmd-edit:hover{background:#eef2f7!important}.cmd-delete{border:1px solid #fecaca!important;background:#fff!important;color:#dc2626!important}.cmd-delete:hover{background:#fef2f2!important}
+@media(max-width:900px){.cmd-table-wrap{overflow-x:auto!important}.cmd-table{min-width:900px!important}}
+
+/* Commandes V4 — lignes cliquables + fiche détail */
+.cmd-table-clickable th:nth-child(1),.cmd-table-clickable td:nth-child(1){width:9%}
+.cmd-table-clickable th:nth-child(2),.cmd-table-clickable td:nth-child(2){width:22%}
+.cmd-table-clickable th:nth-child(3),.cmd-table-clickable td:nth-child(3){width:5%;text-align:center}
+.cmd-table-clickable th:nth-child(4),.cmd-table-clickable td:nth-child(4){width:11%}
+.cmd-table-clickable th:nth-child(5),.cmd-table-clickable td:nth-child(5){width:12%}
+.cmd-table-clickable th:nth-child(6),.cmd-table-clickable td:nth-child(6){width:10%}
+.cmd-table-clickable th:nth-child(7),.cmd-table-clickable td:nth-child(7){width:12%}
+.cmd-table-clickable th:nth-child(8),.cmd-table-clickable td:nth-child(8){width:19%}
+.cmd-click-row{cursor:pointer;transition:background-color .15s ease,box-shadow .15s ease}
+.cmd-click-row:hover,.cmd-click-row:focus{background:#f8fafc;outline:none;box-shadow:inset 3px 0 0 #2563eb}
+.cmd-click-row td{vertical-align:middle!important}
+.cmd-detail-card{max-width:1100px;margin:0 auto}
+.cmd-detail-grid{grid-template-columns:repeat(3,minmax(0,1fr))}
+.cmd-detail-badge{font-size:13px;padding:8px 12px}
+.cmd-detail-delete-form{margin:0;display:inline-flex}
+.cmd-detail-delete{font:inherit;cursor:pointer}
+@media(max-width:900px){.cmd-table-clickable{min-width:820px!important}.cmd-detail-grid{grid-template-columns:1fr 1fr}}
+@media(max-width:650px){.cmd-detail-grid{grid-template-columns:1fr}}

@@ -168,6 +168,30 @@ def create_postgres_tables(cursor):
         )
     """)
 
+
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS chantiers (
+            id SERIAL PRIMARY KEY,
+            nom TEXT NOT NULL UNIQUE,
+            actif BOOLEAN NOT NULL DEFAULT TRUE
+        )
+    """)
+
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS commandes (
+            id SERIAL PRIMARY KEY,
+            date_commande DATE NOT NULL DEFAULT CURRENT_DATE,
+            piece TEXT NOT NULL,
+            quantite TEXT NOT NULL DEFAULT '1',
+            reference TEXT,
+            etat TEXT NOT NULL DEFAULT 'À demander',
+            delai DATE,
+            secteur_id INTEGER REFERENCES secteurs(id),
+            chantier_id INTEGER REFERENCES chantiers(id),
+            commentaire TEXT,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+    """)
     cursor.execute("""
         CREATE TABLE IF NOT EXISTS agenda (
             id SERIAL PRIMARY KEY,
@@ -285,6 +309,32 @@ def create_sqlite_tables(cursor):
         )
     """)
 
+
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS chantiers (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            nom TEXT NOT NULL UNIQUE,
+            actif INTEGER NOT NULL DEFAULT 1
+        )
+    """)
+
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS commandes (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            date_commande DATE NOT NULL DEFAULT CURRENT_DATE,
+            piece TEXT NOT NULL,
+            quantite TEXT NOT NULL DEFAULT '1',
+            reference TEXT,
+            etat TEXT NOT NULL DEFAULT 'À demander',
+            delai DATE,
+            secteur_id INTEGER,
+            chantier_id INTEGER,
+            commentaire TEXT,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (secteur_id) REFERENCES secteurs(id),
+            FOREIGN KEY (chantier_id) REFERENCES chantiers(id)
+        )
+    """)
     cursor.execute("""
         CREATE TABLE IF NOT EXISTS agenda (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -412,6 +462,21 @@ def migrate_agenda_table(conn):
         """)
 
 
+def migrate_commandes_chantiers_table(conn):
+    """Ajoute chantier_id aux anciennes bases sans supprimer les commandes existantes."""
+    cursor = conn.cursor()
+    if is_postgres():
+        cursor.execute("""
+            ALTER TABLE commandes
+            ADD COLUMN IF NOT EXISTS chantier_id INTEGER REFERENCES chantiers(id)
+        """)
+    else:
+        columns = cursor.execute("PRAGMA table_info(commandes)").fetchall()
+        column_names = [row[1] for row in columns]
+        if "chantier_id" not in column_names:
+            cursor.execute("ALTER TABLE commandes ADD COLUMN chantier_id INTEGER REFERENCES chantiers(id)")
+
+
 def init_db():
     conn = get_db_connection()
 
@@ -426,6 +491,7 @@ def init_db():
         migrate_photos_table(conn)
         migrate_secteurs_table(conn)
         migrate_agenda_table(conn)
+        migrate_commandes_chantiers_table(conn)
 
         conn.commit()
     except Exception:

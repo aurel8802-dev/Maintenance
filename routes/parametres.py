@@ -686,3 +686,89 @@ def modifier_secteur(secteur_id):
     return redirect(
         url_for("parametres.gerer_secteurs")
     )
+# -------------------------------------------------------------------
+# Gestion des chantiers (indépendants des secteurs)
+# -------------------------------------------------------------------
+
+@parametres_bp.route("/parametres/chantiers", methods=["GET", "POST"])
+def gerer_chantiers():
+    message = None
+    erreur = None
+    conn = get_db_connection()
+    try:
+        if request.method == "POST":
+            nom = request.form.get("nom", "").strip()
+            if not nom:
+                erreur = "Le nom du chantier est obligatoire."
+            else:
+                existant = conn.execute("""
+                    SELECT id, actif FROM chantiers
+                    WHERE LOWER(TRIM(nom)) = LOWER(TRIM(?))
+                    LIMIT 1
+                """, (nom,)).fetchone()
+                if existant:
+                    if existant["actif"]:
+                        erreur = "Ce chantier existe déjà."
+                    else:
+                        conn.execute("UPDATE chantiers SET actif = TRUE, nom = ? WHERE id = ?", (nom, existant["id"]))
+                        conn.commit()
+                        message = "Chantier réactivé."
+                else:
+                    conn.execute("INSERT INTO chantiers (nom, actif) VALUES (?, TRUE)", (nom,))
+                    conn.commit()
+                    message = "Chantier ajouté."
+
+        chantiers = conn.execute("SELECT * FROM chantiers WHERE actif = TRUE ORDER BY nom").fetchall()
+    except Exception as error:
+        conn.rollback()
+        erreur = f"Erreur pendant la gestion des chantiers : {error}"
+        chantiers = []
+    finally:
+        conn.close()
+
+    return render_template("parametres/chantiers.html", chantiers=chantiers, message=message, erreur=erreur)
+
+
+@parametres_bp.route("/parametres/chantiers/<int:chantier_id>/modifier", methods=["POST"])
+def modifier_chantier(chantier_id):
+    nom = request.form.get("nom", "").strip()
+    if nom:
+        try:
+            with transaction_db() as conn:
+                doublon = conn.execute("""
+                    SELECT id FROM chantiers
+                    WHERE LOWER(TRIM(nom)) = LOWER(TRIM(?)) AND id != ? AND actif = TRUE
+                    LIMIT 1
+                """, (nom, chantier_id)).fetchone()
+                if not doublon:
+                    conn.execute("UPDATE chantiers SET nom = ? WHERE id = ?", (nom, chantier_id))
+        except Exception:
+            pass
+    return redirect(url_for("parametres.gerer_chantiers"))
+
+
+@parametres_bp.route("/parametres/chantiers/<int:chantier_id>/supprimer", methods=["POST"])
+def supprimer_chantier(chantier_id):
+    with transaction_db() as conn:
+        conn.execute("UPDATE chantiers SET actif = FALSE WHERE id = ?", (chantier_id,))
+    return redirect(url_for("parametres.gerer_chantiers"))
+
+@parametres_bp.route("/parametres/chantiers/nettoyer", methods=["POST"])
+def nettoyer_chantiers():
+    """Uniformise les noms et fusionne les chantiers en double en conservant les commandes."""
+    with transaction_db() as conn:
+        rows = conn.execute("SELECT id, nom, actif FROM chantiers ORDER BY id").fetchall()
+        groupes = {}
+        for row in rows:
+            nom = " ".join((row["nom"] or "").strip().split())
+            cle = nom.casefold()
+            if not cle:
+                continue
+            if cle not in groupes:
+                groupes[cle] = {"id": row["id"], "nom": nom}
+                conn.execute("UPDATE chantiers SET nom = ?, actif = TRUE WHERE id = ?", (nom, row["id"]))
+            else:
+                principal = groupes[cle]["id"]
+                conn.execute("UPDATE commandes SET chantier_id = ? WHERE chantier_id = ?", (principal, row["id"]))
+                conn.execute("UPDATE chantiers SET actif = FALSE WHERE id = ?", (row["id"],))
+    return redirect(url_for("parametres.gerer_chantiers"))

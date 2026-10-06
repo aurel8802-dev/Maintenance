@@ -10,6 +10,7 @@ from routes.parametres import parametres_bp
 from routes.rapports import rapports_bp
 from routes.agenda import agenda_bp
 from routes.courbes_edf import courbes_edf_bp
+from routes.commandes import commandes_bp
 
 
 app = Flask(__name__)
@@ -40,6 +41,7 @@ app.register_blueprint(rapports_bp)
 app.register_blueprint(parametres_bp)
 app.register_blueprint(agenda_bp)
 app.register_blueprint(courbes_edf_bp)
+app.register_blueprint(commandes_bp)
 
 
 # -------------------------------------------------------------------

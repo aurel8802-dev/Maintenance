@@ -1,0 +1,27 @@
+{% extends "base.html" %}
+{% block page_title %}Commandes{% endblock %}
+{% block page_subtitle %}Suivi des commandes de pièces{% endblock %}
+{% block content %}
+<section class="cmd-page">
+    <div class="cmd-toolbar"><a class="cmd-primary" href="{{ url_for('commandes.nouvelle') }}">+ Nouvelle commande</a></div>
+    <form class="cmd-filters" method="get">
+        <input name="recherche" value="{{ recherche }}" placeholder="Rechercher une pièce, référence, commentaire...">
+        <select name="etat"><option value="">Tous les états</option>{% for x in etats %}<option value="{{ x }}" {% if etat == x %}selected{% endif %}>{{ x }}</option>{% endfor %}</select>
+        <select name="chantier_id"><option value="">Tous les chantiers</option>{% for ch in chantiers %}<option value="{{ ch['id'] }}" {% if chantier_id|string == ch['id']|string %}selected{% endif %}>{{ ch['nom'] }}</option>{% endfor %}</select>
+        <button type="submit">Filtrer</button><a href="{{ url_for('commandes.liste') }}">Réinitialiser</a>
+    </form>
+    <div class="cmd-table-wrap">
+      <table class="cmd-table cmd-table-clickable">
+        <thead><tr><th>Date</th><th>Pièce</th><th>Qté</th><th>Référence</th><th>État</th><th>Délai</th><th>Chantier</th><th>Commentaire</th></tr></thead>
+        <tbody>{% for c in commandes %}<tr class="cmd-click-row" tabindex="0" role="link" data-href="{{ url_for('commandes.detail', id=c['id']) }}" onclick="window.location.href=this.dataset.href" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();window.location.href=this.dataset.href}">
+          <td class="cmd-date">{{ c['date_commande']|date_fr }}</td>
+          <td class="cmd-piece"><strong>{{ c['piece'] }}</strong></td>
+          <td class="cmd-qty">{{ c['quantite'] }}</td><td class="cmd-ref">{{ c['reference'] or '—' }}</td>
+          <td class="cmd-state"><span class="cmd-badge cmd-{{ c['etat']|lower|replace(' ','-')|replace('é','e')|replace('à','a') }}">{{ c['etat'] }}</span></td>
+          <td class="cmd-date">{{ c['delai']|date_fr if c['delai'] else '—' }}</td><td class="cmd-site">{{ c['chantier_nom'] or '—' }}</td>
+          <td class="cmd-comment">{{ c['commentaire'] or '—' }}</td>
+        </tr>{% else %}<tr><td colspan="8" class="cmd-empty">Aucune commande.</td></tr>{% endfor %}</tbody>
+      </table>
+    </div>
+</section>
+{% endblock %}

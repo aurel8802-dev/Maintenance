@@ -326,26 +326,9 @@
     }
 }
 
-/* Champ de sélection XML : reste proprement dans la colonne latérale */
-.edf-import-form input[type="file"] {
-    display: block;
-    width: 100%;
-    min-width: 0;
-    max-width: 100%;
-    padding: 6px;
-    overflow: hidden;
-    font-size: 13px;
-    line-height: 1.4;
-    color: #475569;
-}
 
-.edf-import-form input[type="file"]::file-selector-button {
-    margin-right: 8px;
-    padding: 7px 10px;
-    border: 0;
-    border-radius: 7px;
-    background: #f1f5f9;
-    color: #0f172a;
-    font-weight: 700;
-    cursor: pointer;
-}
+/* Clé de déchiffrement Enedis */
+.edf-key-field { margin-top: 12px; }
+.edf-key-field label { display: block; margin-bottom: 6px; }
+.edf-key-field input { width: 100%; box-sizing: border-box; padding: 9px 10px; border: 1px solid #cbd5e1; border-radius: 8px; }
+.edf-key-field small { display: block; margin-top: 5px; color: #64748b; line-height: 1.35; }

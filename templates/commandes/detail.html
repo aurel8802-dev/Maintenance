@@ -1,0 +1,42 @@
+{% extends "base.html" %}
+{% block page_title %}Détail de la commande{% endblock %}
+{% block page_subtitle %}Consultation de la commande de pièce{% endblock %}
+{% block content %}
+<section class="card detail-card cmd-detail-card">
+    <div class="detail-top">
+        <a href="{{ url_for('commandes.liste') }}" class="btn-secondary">← Retour aux commandes</a>
+        <span class="request-number">CMD-{{ "%05d"|format(commande['id']) }}</span>
+    </div>
+
+    <div class="detail-title">
+        <div>
+            <h2>{{ commande['piece'] }}</h2>
+            <p>Fiche complète de la commande</p>
+        </div>
+        <span class="cmd-badge cmd-detail-badge cmd-{{ commande['etat']|lower|replace(' ','-')|replace('é','e')|replace('à','a') }}">{{ commande['etat'] }}</span>
+    </div>
+
+    <div class="detail-grid cmd-detail-grid">
+        <div class="detail-item"><span>📅 Date</span><strong>{{ commande['date_commande']|date_fr }}</strong></div>
+        <div class="detail-item"><span>🔢 Quantité</span><strong>{{ commande['quantite'] }}</strong></div>
+        <div class="detail-item"><span>🏷️ Référence</span><strong>{{ commande['reference'] or 'Non renseignée' }}</strong></div>
+        <div class="detail-item"><span>🏗️ Chantier</span><strong>{{ commande['chantier_nom'] or 'Non renseigné' }}</strong></div>
+        <div class="detail-item"><span>⏳ Délai</span><strong>{{ commande['delai']|date_fr if commande['delai'] else 'Non renseigné' }}</strong></div>
+    </div>
+
+    <div class="detail-section">
+        <span>💬 Commentaire</span>
+        <p>{{ commande['commentaire'] or 'Aucun commentaire.' }}</p>
+    </div>
+
+    <div class="detail-actions">
+        <div class="detail-actions-left"></div>
+        <div class="detail-actions-right">
+            <a href="{{ url_for('commandes.modifier', id=commande['id']) }}" class="btn">✏️ Modifier</a>
+            <form method="post" action="{{ url_for('commandes.supprimer', id=commande['id']) }}" onsubmit="return confirm('Supprimer cette commande ?')" class="cmd-detail-delete-form">
+                <button type="submit" class="btn-danger cmd-detail-delete">🗑️ Supprimer</button>
+            </form>
+        </div>
+    </div>
+</section>
+{% endblock %}

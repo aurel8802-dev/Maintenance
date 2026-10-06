@@ -1,9 +1,14 @@
 import os
 import re
+import gzip
+import zipfile
+from xml.etree import ElementTree as ET
 from functools import wraps
 from io import BytesIO
 
 import pandas as pd
+from cryptography.hazmat.primitives import padding
+from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
 from flask import (
     Blueprint,
     redirect,
@@ -39,30 +44,152 @@ MOIS = {
 }
 
 
+def _normaliser_contenu(contenu):
+    """Décompresse si nécessaire un contenu XML/ZIP/GZIP."""
+    if not contenu:
+        return b""
+
+    # GZIP
+    if contenu[:2] == b"\x1f\x8b":
+        try:
+            return gzip.decompress(contenu)
+        except Exception:
+            pass
+
+    # ZIP : prend le premier fichier exploitable.
+    if contenu[:4] == b"PK\x03\x04":
+        try:
+            with zipfile.ZipFile(BytesIO(contenu)) as archive:
+                noms = [
+                    n for n in archive.namelist()
+                    if not n.endswith("/")
+                ]
+                preferes = [
+                    n for n in noms
+                    if n.lower().endswith((".xml", ".txt", ".csv"))
+                ]
+                if preferes:
+                    return archive.read(preferes[0])
+                if noms:
+                    return archive.read(noms[0])
+        except Exception:
+            pass
+
+    return contenu
+
+
+def dechiffrer_enedis_aes256(contenu, cle_hex):
+    """
+    Déchiffre un fichier Enedis AES-256-CBC à IV dynamique.
+
+    Format officiel Enedis :
+    - clé : 256 bits = 64 caractères hexadécimaux ;
+    - IV : 16 premiers octets du fichier ;
+    - données chiffrées : octets suivants ;
+    - AES/CBC avec padding PKCS5/PKCS7.
+    """
+    cle_hex = (cle_hex or "").strip().replace(" ", "")
+
+    if not re.fullmatch(r"[0-9A-Fa-f]{64}", cle_hex):
+        raise ValueError(
+            "La clé Enedis doit contenir exactement 64 caractères "
+            "hexadécimaux (clé AES 256 bits)."
+        )
+
+    if len(contenu) < 32:
+        raise ValueError("Le fichier chiffré Enedis est trop court.")
+
+    cle = bytes.fromhex(cle_hex)
+    iv = contenu[:16]
+    donnees_chiffrees = contenu[16:]
+
+    if len(donnees_chiffrees) % 16 != 0:
+        raise ValueError(
+            "Le fichier ne correspond pas au format AES Enedis attendu."
+        )
+
+    try:
+        decryptor = Cipher(
+            algorithms.AES(cle),
+            modes.CBC(iv),
+        ).decryptor()
+        donnees_paddees = (
+            decryptor.update(donnees_chiffrees)
+            + decryptor.finalize()
+        )
+
+        unpadder = padding.PKCS7(128).unpadder()
+        donnees = (
+            unpadder.update(donnees_paddees)
+            + unpadder.finalize()
+        )
+        return donnees
+    except Exception as exc:
+        raise ValueError(
+            "Déchiffrement impossible. Vérifiez que la clé correspond "
+            "bien au canal Enedis ayant transmis ce fichier."
+        ) from exc
+
+
+def _texte_depuis_bytes(contenu):
+    """Décode les formats texte courants utilisés par les exports Enedis."""
+    for encodage in ("utf-8-sig", "utf-8", "iso-8859-15", "cp1252"):
+        try:
+            return contenu.decode(encodage)
+        except UnicodeDecodeError:
+            continue
+    return contenu.decode("utf-8", errors="ignore")
+
+
 def lire_fichier_xml(fichier):
-    """Lit un XML ENEDIS/EDF et renvoie un DataFrame."""
-    contenu = fichier.read().decode("utf-8", errors="ignore")
-
-    pattern = (
-        r'<Donnees_Point_Mesure '
-        r'Horodatage="([^"]+)" '
-        r'Valeur_Point="([^"]+)" '
-        r'Statut_Point="([^"]*)"'
-    )
-
+    """Lit un XML ENEDIS/EDF et renvoie un DataFrame normalisé."""
+    contenu = _normaliser_contenu(fichier.read())
+    texte = _texte_depuis_bytes(contenu)
     donnees = []
 
-    for match in re.finditer(pattern, contenu):
-        try:
-            valeur = float(match.group(2).replace(",", "."))
-        except ValueError:
-            continue
+    # Lecture XML robuste : l'ordre des attributs n'a pas d'importance.
+    try:
+        racine = ET.fromstring(texte)
+        for element in racine.iter():
+            nom = element.tag.split("}")[-1]
+            if nom != "Donnees_Point_Mesure":
+                continue
 
-        donnees.append({
-            "Date/Heure": match.group(1),
-            "Consommation_kW": valeur,
-            "Statut": match.group(3),
-        })
+            horodatage = element.attrib.get("Horodatage")
+            valeur_brute = element.attrib.get("Valeur_Point")
+            statut = element.attrib.get("Statut_Point", "")
+
+            if not horodatage or valeur_brute is None:
+                continue
+
+            try:
+                valeur = float(str(valeur_brute).replace(",", "."))
+            except (TypeError, ValueError):
+                continue
+
+            donnees.append({
+                "Date/Heure": horodatage,
+                "Consommation_kW": valeur,
+                "Statut": statut,
+            })
+    except ET.ParseError:
+        # Compatibilité avec les anciens fichiers acceptés par l'application.
+        pattern = (
+            r'<Donnees_Point_Mesure[^>]*'
+            r'Horodatage="([^"]+)"[^>]*'
+            r'Valeur_Point="([^"]+)"[^>]*'
+            r'(?:Statut_Point="([^"]*)")?[^>]*>'
+        )
+        for match in re.finditer(pattern, texte):
+            try:
+                valeur = float(match.group(2).replace(",", "."))
+            except ValueError:
+                continue
+            donnees.append({
+                "Date/Heure": match.group(1),
+                "Consommation_kW": valeur,
+                "Statut": match.group(3) or "",
+            })
 
     df = pd.DataFrame(donnees)
 
@@ -75,6 +202,40 @@ def lire_fichier_xml(fichier):
         df = df.sort_values("Date/Heure")
 
     return df
+
+
+def preparer_fichier_enedis(contenu, cle_saisie=""):
+    """
+    Retourne le contenu lisible à analyser.
+
+    Un XML/ZIP/GZIP lisible est accepté directement. Si le contenu ne
+    contient aucune donnée, l'application tente le déchiffrement Enedis
+    avec la clé fournie dans le formulaire ou EDF_DECRYPTION_KEY sur Render.
+    """
+    contenu_normalise = _normaliser_contenu(contenu)
+    df_direct = lire_fichier_xml(BytesIO(contenu_normalise))
+    if not df_direct.empty:
+        return contenu_normalise, df_direct, False
+
+    cle = (cle_saisie or os.getenv("EDF_DECRYPTION_KEY", "")).strip()
+    if not cle:
+        raise ValueError(
+            "Ce fichier semble être chiffré par Enedis. Saisissez la clé "
+            "AES du canal Enedis (64 caractères hexadécimaux), ou configurez "
+            "EDF_DECRYPTION_KEY sur Render."
+        )
+
+    contenu_dechiffre = dechiffrer_enedis_aes256(contenu, cle)
+    contenu_dechiffre = _normaliser_contenu(contenu_dechiffre)
+    df = lire_fichier_xml(BytesIO(contenu_dechiffre))
+
+    if df.empty:
+        raise ValueError(
+            "Le fichier a été déchiffré, mais aucune donnée de courbe "
+            "ENEDIS compatible n'a été trouvée dans son contenu."
+        )
+
+    return contenu_dechiffre, df, True
 
 
 def creer_excel_avec_graphique(df, titre="Courbe de consommation"):
@@ -290,11 +451,19 @@ def importer():
     if not fichier or not fichier.filename:
         return redirect(url_for("courbes_edf.index", erreur="Aucun fichier sélectionné."))
 
-    contenu = fichier.read()
-    df = lire_fichier_xml(BytesIO(contenu))
+    contenu_original = fichier.read()
+    cle_enedis = request.form.get("cle_enedis", "").strip()
 
-    if df.empty:
-        return redirect(url_for("courbes_edf.index", erreur="Aucune donnée ENEDIS trouvée dans ce fichier."))
+    try:
+        contenu, df, etait_chiffre = preparer_fichier_enedis(
+            contenu_original,
+            cle_enedis,
+        )
+    except ValueError as exc:
+        return redirect(url_for(
+            "courbes_edf.index",
+            erreur=str(exc),
+        ))
 
     date_debut = df["Date/Heure"].min()
     annee = int(date_debut.year)
@@ -352,7 +521,10 @@ def importer():
     return redirect(url_for(
         "courbes_edf.index",
         courbe_id=courbe_id,
-        message=f"Courbe {MOIS[mois]} {annee} enregistrée.",
+        message=(
+            f"Courbe {MOIS[mois]} {annee} enregistrée"
+            + (" après déchiffrement Enedis." if etait_chiffre else ".")
+        ),
     ))
 
 
