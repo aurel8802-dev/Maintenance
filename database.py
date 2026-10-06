@@ -560,8 +560,13 @@ def migrate_commandes_pdf_v6(conn):
             ))
 
     # Marqueur informatif ; l'anti-doublon ci-dessus reste la vraie protection.
-    if not conn.execute("SELECT cle FROM migrations_app WHERE cle = ?", ("commandes_pdf_2026_v7",)).fetchone():
-        conn.execute("INSERT INTO migrations_app (cle) VALUES (?)", ("commandes_pdf_2026_v7",))
+    # ON CONFLICT évite que l’adaptateur PostgreSQL ajoute automatiquement
+    # « RETURNING id » : migrations_app utilise « cle » comme clé primaire
+    # et ne possède volontairement pas de colonne id. Compatible SQLite/PostgreSQL.
+    conn.execute(
+        "INSERT INTO migrations_app (cle) VALUES (?) ON CONFLICT (cle) DO NOTHING",
+        ("commandes_pdf_2026_v7",)
+    )
     conn.commit()
 
 
