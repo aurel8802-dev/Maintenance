@@ -31,9 +31,7 @@
 
                 <nav class="menu">
                     <a href="/">🏠 Tableau de bord</a>
-                    <a href="/demandes/nouvelle">📝 Nouvelle demande</a>
                     <a href="/demandes">📋 Demandes</a>
-                    <a href="/rapports/nouveau">📄 Nouveau rapport</a>
                     <a href="/rapports">📑 Rapports</a>
 
                     <a href="{{ url_for('agenda.afficher_agenda') }}">
@@ -41,6 +39,8 @@
                     </a>
 
                     <a href="{{ url_for('commandes.liste') }}">📦 Commandes</a>
+                    <a href="{{ url_for('tar.liste') }}">🔢 TAR</a>
+                    <a href="#" onclick="return false;">🛠️ Préventif</a>
 
                     <a href="/parametres">⚙️ Paramètres</a>
                 </nav>

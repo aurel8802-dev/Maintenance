@@ -1,0 +1,18 @@
+{% extends "base.html" %}
+{% block page_title %}Détail du relevé TAR{% endblock %}
+{% block page_subtitle %}Consultation du relevé compteur{% endblock %}
+{% block content %}
+<section class="card detail-card cmd-detail-card">
+ <div class="detail-top"><a href="{{ url_for('tar.liste') }}" class="btn-secondary">← Retour aux relevés TAR</a><span class="request-number">TAR-{{ "%05d"|format(releve['id']) }}</span></div>
+ <div class="detail-title"><div><h2>Relevé du {{ releve['date_releve']|date_fr }}</h2><p>Fiche complète du relevé TAR</p></div></div>
+ <div class="detail-grid cmd-detail-grid">
+  <div class="detail-item"><span>📅 Date</span><strong>{{ releve['date_releve']|date_fr }}</strong></div>
+  <div class="detail-item"><span>🔢 Index compteur</span><strong>{{ releve['index_compteur'] }}</strong></div>
+ </div>
+ <div class="detail-section"><span>🧪 Traitements</span><p>{{ releve['traitements'] or 'Aucun traitement renseigné.' }}</p></div>
+ <div class="detail-actions"><div class="detail-actions-left"></div><div class="detail-actions-right">
+  <a href="{{ url_for('tar.modifier', id=releve['id']) }}" class="btn">✏️ Modifier</a>
+  <form method="post" action="{{ url_for('tar.supprimer', id=releve['id']) }}" onsubmit="return confirm('Supprimer ce relevé TAR ?')" class="cmd-detail-delete-form"><button type="submit" class="btn-danger cmd-detail-delete">🗑️ Supprimer</button></form>
+ </div></div>
+</section>
+{% endblock %}

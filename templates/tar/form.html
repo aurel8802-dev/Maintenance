@@ -1,0 +1,13 @@
+{% extends "base.html" %}
+{% block page_title %}Modifier le relevé TAR{% endblock %}
+{% block page_subtitle %}Correction d'un relevé compteur{% endblock %}
+{% block content %}
+<section class="tar-page"><div class="tar-card">
+ <form method="post" class="tar-form">
+  <div><label>Date</label><input type="date" name="date_releve" value="{{ releve['date_releve'] }}" required></div>
+  <div><label>Index compteur</label><input type="text" name="index_compteur" value="{{ releve['index_compteur'] }}" required></div>
+  <div class="tar-wide"><label>Traitements</label><textarea name="traitements" rows="4">{{ releve['traitements'] or '' }}</textarea></div>
+  <div class="tar-wide tar-actions"><a href="{{ url_for('tar.detail', id=releve['id']) }}" class="btn-secondary">Annuler</a><button class="cmd-primary" type="submit">Enregistrer</button></div>
+ </form>
+</div></section>
+{% endblock %}

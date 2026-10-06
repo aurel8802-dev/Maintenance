@@ -5,7 +5,7 @@ from flask import Blueprint, redirect, render_template, request, url_for
 from database import get_db_connection
 
 commandes_bp = Blueprint("commandes", __name__, url_prefix="/commandes")
-ETATS = ["À demander", "Prix demandé", "Commandé", "Livré", "Refusé"]
+ETATS = ["Demandé", "Devis", "Commandé", "Livré", "Refusé"]
 
 
 @commandes_bp.route("/")
@@ -78,7 +78,7 @@ def nouvelle():
             request.form["piece"].strip(),
             request.form.get("quantite", "1").strip(),
             request.form.get("reference", "").strip(),
-            request.form.get("etat", "À demander"),
+            request.form.get("etat", "Demandé"),
             request.form.get("delai") or None,
             request.form.get("chantier_id") or None,
             request.form.get("commentaire", "").strip(),
@@ -140,7 +140,7 @@ def modifier(id):
             request.form["piece"].strip(),
             request.form.get("quantite", "1").strip(),
             request.form.get("reference", "").strip(),
-            request.form.get("etat", "À demander"),
+            request.form.get("etat", "Demandé"),
             request.form.get("delai") or None,
             request.form.get("chantier_id") or None,
             request.form.get("commentaire", "").strip(),

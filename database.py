@@ -5,6 +5,8 @@ from pathlib import Path
 import psycopg2
 from psycopg2.extras import DictCursor
 
+from commandes_historiques import COMMANDES_HISTORIQUES
+
 
 BASE_DIR = Path(__file__).resolve().parent
 DB_PATH = BASE_DIR / "maintenance.db"
@@ -184,7 +186,7 @@ def create_postgres_tables(cursor):
             piece TEXT NOT NULL,
             quantite TEXT NOT NULL DEFAULT '1',
             reference TEXT,
-            etat TEXT NOT NULL DEFAULT 'À demander',
+            etat TEXT NOT NULL DEFAULT 'Demandé',
             delai DATE,
             secteur_id INTEGER REFERENCES secteurs(id),
             chantier_id INTEGER REFERENCES chantiers(id),
@@ -192,6 +194,16 @@ def create_postgres_tables(cursor):
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         )
     """)
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS releves_tar (
+            id SERIAL PRIMARY KEY,
+            date_releve DATE NOT NULL DEFAULT CURRENT_DATE,
+            index_compteur TEXT NOT NULL,
+            traitements TEXT,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+    """)
+
     cursor.execute("""
         CREATE TABLE IF NOT EXISTS agenda (
             id SERIAL PRIMARY KEY,
@@ -325,7 +337,7 @@ def create_sqlite_tables(cursor):
             piece TEXT NOT NULL,
             quantite TEXT NOT NULL DEFAULT '1',
             reference TEXT,
-            etat TEXT NOT NULL DEFAULT 'À demander',
+            etat TEXT NOT NULL DEFAULT 'Demandé',
             delai DATE,
             secteur_id INTEGER,
             chantier_id INTEGER,
@@ -335,6 +347,16 @@ def create_sqlite_tables(cursor):
             FOREIGN KEY (chantier_id) REFERENCES chantiers(id)
         )
     """)
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS releves_tar (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            date_releve DATE NOT NULL DEFAULT CURRENT_DATE,
+            index_compteur TEXT NOT NULL,
+            traitements TEXT,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+    """)
+
     cursor.execute("""
         CREATE TABLE IF NOT EXISTS agenda (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -477,6 +499,72 @@ def migrate_commandes_chantiers_table(conn):
             cursor.execute("ALTER TABLE commandes ADD COLUMN chantier_id INTEGER REFERENCES chantiers(id)")
 
 
+def migrate_commandes_etats(conn):
+    """Renomme les anciens états de commande sans perdre les données."""
+    conn.execute("UPDATE commandes SET etat = ? WHERE etat = ?", ("Demandé", "À demander"))
+    conn.execute("UPDATE commandes SET etat = ? WHERE etat = ?", ("Devis", "Prix demandé"))
+    conn.commit()
+
+
+
+def migrate_commandes_pdf_v6(conn):
+    """Importe les commandes historiques du PDF sans toucher aux autres modules.
+
+    La V7 vérifie chaque commande individuellement : si une commande identique
+    existe déjà, elle n'est pas recréée. Cela permet de réparer une migration V6
+    marquée comme faite mais restée vide, sans créer de doublons sur Render.
+    """
+    cursor = conn.cursor()
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS migrations_app (
+            cle TEXT PRIMARY KEY,
+            appliquee_le TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+    """)
+
+    # Création uniquement des chantiers réellement présents dans le PDF.
+    noms_chantiers = sorted({c["chantier"] for c in COMMANDES_HISTORIQUES if c.get("chantier")})
+    for nom in noms_chantiers:
+        existe = conn.execute("SELECT id FROM chantiers WHERE LOWER(nom) = LOWER(?)", (nom,)).fetchone()
+        if not existe:
+            conn.execute("INSERT INTO chantiers (nom, actif) VALUES (?, ?)", (nom, True))
+
+    for c in COMMANDES_HISTORIQUES:
+        chantier_id = None
+        if c.get("chantier"):
+            chantier = conn.execute("SELECT id FROM chantiers WHERE LOWER(nom) = LOWER(?)", (c["chantier"],)).fetchone()
+            if chantier:
+                chantier_id = chantier["id"]
+
+        # Protection anti-doublon basée sur les données stables du PDF.
+        existe = conn.execute("""
+            SELECT id FROM commandes
+            WHERE date_commande = ?
+              AND piece = ?
+              AND quantite = ?
+              AND COALESCE(reference, '') = ?
+              AND COALESCE(chantier_id, 0) = COALESCE(?, 0)
+            LIMIT 1
+        """, (
+            c["date"], c["piece"], c["quantite"], c.get("reference") or "", chantier_id
+        )).fetchone()
+
+        if not existe:
+            conn.execute("""
+                INSERT INTO commandes
+                (date_commande, piece, quantite, reference, etat, delai, chantier_id, commentaire)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+            """, (
+                c["date"], c["piece"], c["quantite"], c.get("reference") or "",
+                c["etat"], c.get("delai"), chantier_id, c.get("commentaire") or ""
+            ))
+
+    # Marqueur informatif ; l'anti-doublon ci-dessus reste la vraie protection.
+    if not conn.execute("SELECT cle FROM migrations_app WHERE cle = ?", ("commandes_pdf_2026_v7",)).fetchone():
+        conn.execute("INSERT INTO migrations_app (cle) VALUES (?)", ("commandes_pdf_2026_v7",))
+    conn.commit()
+
+
 def init_db():
     conn = get_db_connection()
 
@@ -492,6 +580,8 @@ def init_db():
         migrate_secteurs_table(conn)
         migrate_agenda_table(conn)
         migrate_commandes_chantiers_table(conn)
+        migrate_commandes_etats(conn)
+        migrate_commandes_pdf_v6(conn)
 
         conn.commit()
     except Exception:

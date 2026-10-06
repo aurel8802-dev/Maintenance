@@ -1,0 +1,31 @@
+{% extends "base.html" %}
+{% block page_title %}TAR{% endblock %}
+{% block page_subtitle %}Suivi des relevés du compteur{% endblock %}
+{% block content %}
+<section class="tar-page">
+    <div class="tar-card">
+        <h3>Ajouter un relevé</h3>
+        <form method="post" class="tar-form">
+            <div><label>Date</label><input type="date" name="date_releve" value="{{ today }}" required></div>
+            <div><label>Index compteur</label><input type="text" name="index_compteur" required placeholder="Index du compteur"></div>
+            <div class="tar-wide"><label>Traitements</label><textarea name="traitements" rows="3" placeholder="Traitements / observations"></textarea></div>
+            <div class="tar-wide tar-actions"><button class="cmd-primary" type="submit">Ajouter le relevé</button></div>
+        </form>
+    </div>
+    <div class="tar-card tar-history">
+        <h3>Historique des relevés</h3>
+        <div class="tar-table-wrap">
+            <table class="tar-table">
+                <thead><tr><th>Date</th><th>Index compteur</th><th>Traitements</th></tr></thead>
+                <tbody>
+                {% for r in releves %}
+                    <tr class="tar-click-row" tabindex="0" role="link" data-href="{{ url_for('tar.detail', id=r['id']) }}" onclick="window.location.href=this.dataset.href" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();window.location.href=this.dataset.href}">
+                        <td>{{ r['date_releve']|date_fr }}</td><td><strong>{{ r['index_compteur'] }}</strong></td><td>{{ r['traitements'] or '—' }}</td>
+                    </tr>
+                {% else %}<tr><td colspan="3" class="cmd-empty">Aucun relevé TAR enregistré.</td></tr>{% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</section>
+{% endblock %}

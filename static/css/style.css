@@ -1946,3 +1946,12 @@ form.filters-bar .btn-secondary {
 .cmd-detail-delete{font:inherit;cursor:pointer}
 @media(max-width:900px){.cmd-table-clickable{min-width:820px!important}.cmd-detail-grid{grid-template-columns:1fr 1fr}}
 @media(max-width:650px){.cmd-detail-grid{grid-template-columns:1fr}}
+
+/* TAR */
+.tar-page{display:grid;gap:20px}.tar-card{background:#fff;border:1px solid #e5e7eb;border-radius:14px;padding:22px}.tar-card h3{margin:0 0 18px}.tar-form{display:grid;grid-template-columns:1fr 1fr;gap:18px}.tar-form label{display:block;font-weight:700;margin-bottom:7px}.tar-form input,.tar-form textarea{box-sizing:border-box;width:100%;padding:10px 12px;border:1px solid #d1d5db;border-radius:9px;font:inherit;background:#fff}.tar-wide{grid-column:1/-1}.tar-actions{display:flex;justify-content:flex-end}.tar-table-wrap{overflow-x:auto}.tar-table{width:100%;border-collapse:collapse}.tar-table th,.tar-table td{padding:12px 10px;border-bottom:1px solid #e5e7eb;text-align:left;vertical-align:top}.tar-table th{background:#f9fafb;font-size:13px}.tar-delete-cell{text-align:right!important;width:90px}.tar-delete{border:0;background:none;color:#b91c1c;font:inherit;font-size:13px;cursor:pointer}@media(max-width:700px){.tar-form{grid-template-columns:1fr}.tar-wide{grid-column:auto}}
+
+/* TAR V6 — liste cliquable comme Demandes et Commandes */
+.tar-click-row{cursor:pointer;transition:background-color .15s ease,box-shadow .15s ease}
+.tar-click-row:hover,.tar-click-row:focus{background:#f8fafc;outline:none;box-shadow:inset 3px 0 0 #2563eb}
+.tar-click-row td{vertical-align:middle!important}
+.tar-actions{gap:10px;align-items:center}
